@@ -1,13 +1,15 @@
 from django.db import models
+from django.conf import settings
+from django.utils.module_loading import import_string
 from .city import City
 
+PageMixin = import_string(settings.PAGE_MIXIN)
 
-class Project(models.Model):
-    title = models.CharField(max_length=100, verbose_name='Название')
+
+class Project(PageMixin, models.Model):
+    name = models.CharField(max_length=100, verbose_name='Название')
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID')
     city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='Город')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата изменения')
 
     def __str__(self):
         return self.title

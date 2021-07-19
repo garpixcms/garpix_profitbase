@@ -1,6 +1,6 @@
-from django.db import models
+from django.db import models  # noqa
 from django.contrib.auth.models import AbstractUser
-from django.conf import settings
+from django.conf import settings  # noqa
 from garpix_notify.mixins import UserNotifyMixin
 
 

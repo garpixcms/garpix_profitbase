@@ -1,8 +1,12 @@
 from django.db import models
+from django.conf import settings
+from django.utils.module_loading import import_string
+
+EmptyMixin = import_string(settings.EMPTY_MIXIN)
 
 
-class HouseSection(models.Model):
-    title = models.CharField(max_length=256, verbose_name='Номер подъезда', blank=True, default='')
+class HouseSection(EmptyMixin, models.Model):
+    number = models.CharField(max_length=256, verbose_name='Номер подъезда', blank=True, default='')
     house = models.ForeignKey('House', verbose_name='Дом', related_name='section', on_delete=models.CASCADE)
 
     class Meta:
@@ -10,4 +14,4 @@ class HouseSection(models.Model):
         verbose_name_plural = 'Подьезды'
 
     def __str__(self):
-        return str(self.title)
+        return str(self.number)
