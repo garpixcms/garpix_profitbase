@@ -99,7 +99,6 @@ class ProfitBase(object):
                 property = Property.objects.filter(profitbase_id=item['id']).first()
                 house = House.objects.filter(profitbase_id=item['house_id']).first()
                 area = get_areas(item)
-                print(area)
                 data = {
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
