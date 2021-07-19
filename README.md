@@ -28,7 +28,7 @@ PROFITBASE_API_KEY=app-?????????
 PROFITBASE_CLIENT_NAME=???????
 PROFITBASE_COMPANY_ID=????
 ```
-
+Нужно обратиться к администраторам profitbase.ru чтоб они добавили ваш ip в белый список
 ## Использование
 
 Для получения данных от profitbase.ru используйте следующую manage.py команду:
