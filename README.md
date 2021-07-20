@@ -27,7 +27,7 @@ INSTALLED_APPS = [
 PROFITBASE_API_KEY=app-?????????
 PROFITBASE_CLIENT_NAME=???????
 PROFITBASE_COMPANY_ID=????
-ENABLE_GARPIX_AUTH=True
+ENABLE_GARPIX_AUTH=False
 ```
 Также, в settings.py необходимо добавить миксины:
 
