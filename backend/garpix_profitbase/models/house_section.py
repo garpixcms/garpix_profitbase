@@ -2,10 +2,10 @@ from django.db import models
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-EmptyMixin = import_string(settings.EMPTY_MIXIN)
+HouseSectionMixin = import_string(settings.GARPIX_PROFITBASE_HOUSE_SECTION_MIXIN)
 
 
-class HouseSection(EmptyMixin, models.Model):
+class HouseSection(HouseSectionMixin, models.Model):
     number = models.CharField(max_length=256, verbose_name='Номер подъезда', blank=True, default='')
     house = models.ForeignKey('House', verbose_name='Дом', related_name='section', on_delete=models.CASCADE)
 

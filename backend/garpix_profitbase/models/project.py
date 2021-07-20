@@ -3,10 +3,10 @@ from django.conf import settings
 from django.utils.module_loading import import_string
 from .city import City
 
-PageMixin = import_string(settings.PAGE_MIXIN)
+ProjectMixin = import_string(settings.GARPIX_PROFITBASE_PROJECT_MIXIN)
 
 
-class Project(PageMixin, models.Model):
+class Project(ProjectMixin, models.Model):
     name = models.CharField(max_length=100, verbose_name='Название')
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID')
     city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name='Город')

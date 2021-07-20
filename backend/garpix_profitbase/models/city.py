@@ -2,10 +2,10 @@ from django.db import models
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-EmptyMixin = import_string(settings.EMPTY_MIXIN)
+CityMixin = import_string(settings.GARPIX_PROFITBASE_CITY_MIXIN)
 
 
-class City(EmptyMixin, models.Model):
+class City(CityMixin, models.Model):
     title = models.CharField(max_length=100, verbose_name='Название города')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='Дата изменения')

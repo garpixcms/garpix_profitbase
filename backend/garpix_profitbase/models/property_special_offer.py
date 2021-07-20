@@ -2,10 +2,10 @@ from django.db import models  # noqa
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-EmptyMixin = import_string(settings.EMPTY_MIXIN)
+SpecialOfferMixin = import_string(settings.GARPIX_PROFITBASE_SPECIAL_OFFER_MIXIN)
 
 
-class PropertySpecialOffer(EmptyMixin, models.Model):
+class PropertySpecialOffer(SpecialOfferMixin, models.Model):
     is_active = models.BooleanField(default=False, verbose_name='Акция активна?')
     title = models.CharField(max_length=256, verbose_name='Название акции', blank=True, default='')
     profitbase_id = models.IntegerField(verbose_name='ID акции', blank=True, null=True)

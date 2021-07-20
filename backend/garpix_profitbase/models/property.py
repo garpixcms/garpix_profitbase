@@ -2,10 +2,10 @@ from django.db import models
 from django.conf import settings
 from django.utils.module_loading import import_string
 
-PageMixin = import_string(settings.PAGE_MIXIN)
+PropertyMixin = import_string(settings.GARPIX_PROFITBASE_PROPERTY_MIXIN)
 
 
-class Property(PageMixin, models.Model):
+class Property(PropertyMixin, models.Model):
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID')
     self_house = models.ForeignKey('House', on_delete=models.CASCADE, verbose_name='Дом')
     number = models.CharField(max_length=256, verbose_name='Номер помещения', blank=True, default='')
