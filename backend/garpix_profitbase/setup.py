@@ -31,5 +31,6 @@ setup(
     install_requires=[
         'garpixcms >= 1.7.1',
         'transliterate == 1.10.2',
+        'requests == 2.26.0',
     ],
 )
