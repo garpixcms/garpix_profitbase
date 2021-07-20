@@ -16,7 +16,7 @@ class Property(PropertyMixin, models.Model):
     has_related_preset_with_layout = models.BooleanField(default=False,
                                                          verbose_name='Имеет связанную предустановку с макетом')
     facing = models.CharField(max_length=350, verbose_name='Отделка', blank=True, null=True)
-    area_total = models.FloatField(verbose_name='Ссумарная площадь', blank=True, null=True)
+    area_total = models.FloatField(verbose_name='Суммарная площадь', blank=True, null=True)
     area_estimated = models.FloatField(verbose_name='Оценочная площадь', blank=True, null=True)
     area_living = models.FloatField(verbose_name='Жилая площадь', blank=True, null=True)
     area_kitchen = models.FloatField(verbose_name='Площадь кухни', blank=True, null=True)

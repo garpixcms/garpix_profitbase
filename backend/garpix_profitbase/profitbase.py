@@ -28,12 +28,19 @@ class ProfitBase(object):
         self.get_properties()
         self.get_special_offers()
 
-    def create_booking(self, data):
+    def create_booking(self, name, phone, email, property_id, comment):
         self.authenticate()
-        self.send_booking_order(data)
+        self.send_booking_order(name, phone, email, property_id, comment)
 
-    def send_booking_order(self, data):
+    def send_booking_order(self, name, phone, email, property_id, comment):
         url = self.base_url + f'/orders?access_token={self.token}'
+        data = {
+            'name': name,
+            'phone': phone,
+            'email': email,
+            'property_id': property_id,
+            'comment': comment,
+        }
         response = requests.post(url, headers=self.default_header, data=json.dumps(data))
         return response.status_code
 
