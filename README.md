@@ -32,13 +32,13 @@ ENABLE_GARPIX_AUTH=True
 Также, в settings.py необходимо добавить миксины:
 
 ```bash
-GARPIX_PROFITBASE_CITY_MIXIN=????
-GARPIX_PROFITBASE_HOUSE_MIXIN=????
-GARPIX_PROFITBASE_HOUSE_FLOOR_MIXIN=????
-GARPIX_PROFITBASE_HOUSE_SECTION_MIXIN=????
-GARPIX_PROFITBASE_PROJECT_MIXIN=????
-GARPIX_PROFITBASE_PROPERTY_MIXIN=????
-GARPIX_PROFITBASE_SPECIAL_OFFER_MIXIN=????
+GARPIX_PROFITBASE_CITY_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+GARPIX_PROFITBASE_HOUSE_MIXIN = 'garpix_page.models.BasePage'
+GARPIX_PROFITBASE_HOUSE_FLOOR_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+GARPIX_PROFITBASE_HOUSE_SECTION_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+GARPIX_PROFITBASE_PROJECT_MIXIN = 'garpix_page.models.BasePage'
+GARPIX_PROFITBASE_PROPERTY_MIXIN = 'garpix_page.models.BasePage'
+GARPIX_PROFITBASE_SPECIAL_OFFER_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
 ```
 ## Использование
 
