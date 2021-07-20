@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "450bf2c75ae6555cb3f82f5b55bc9dafd8d7a287745097d26007e02b14df4a01"
+            "sha256": "7d61aaa9bcb8add33d1951abe9a5e2b83e4de8b239286c835802004390fe3f93"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -404,11 +404,11 @@
         },
         "garpixcms": {
             "hashes": [
-                "sha256:03a246738f3a1efb88cc80c1374172eb7d4a5ff5a81cc0dd9dbaaa7e36f2884e",
-                "sha256:0606dbc21ac3f46d81f118fb13969b6ce6c43786eb5f5363797977800fbf87a5"
+                "sha256:7442bd054fd9e5833c6e9a1db06c1368ef23bb4258707902c116e6ad2b580f44",
+                "sha256:99c268eb414189ec23f0adf20429d93ab5d70cab991a756268e60842b1675b1c"
             ],
             "index": "pypi",
-            "version": "==1.7.1"
+            "version": "==1.7.3"
         },
         "gitdb": {
             "hashes": [
@@ -456,6 +456,14 @@
                 "sha256:af886f129dea4a2a1e3d36595a2d139589e4dd287f5cab0b40e799ee81570ff1"
             ],
             "version": "==1.2.0"
+        },
+        "jeepney": {
+            "hashes": [
+                "sha256:1237cd64c8f7ac3aa4b3f332c4d0fb4a8216f39eaa662ec904302d4d77de5a54",
+                "sha256:71335e7a4e93817982f473f3507bffc2eff7a544119ab9b73e089c8ba1409ba3"
+            ],
+            "markers": "sys_platform == 'linux'",
+            "version": "==0.7.0"
         },
         "jinja2": {
             "hashes": [
@@ -887,6 +895,14 @@
             ],
             "markers": "python_version < '3.10' and platform_python_implementation == 'CPython'",
             "version": "==0.2.6"
+        },
+        "secretstorage": {
+            "hashes": [
+                "sha256:422d82c36172d88d6a0ed5afdec956514b189ddbfb72fefab0c8a1cee4eaf71f",
+                "sha256:fd666c51a6bf200643495a04abb261f83229dcb6fd8472ec393df7ffc8b6f195"
+            ],
+            "markers": "sys_platform == 'linux'",
+            "version": "==3.3.1"
         },
         "six": {
             "hashes": [

@@ -1,10 +1,7 @@
-from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City
+from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor
 import os
 import requests
 import json
-from transliterate import translit
-from django.contrib.sites.models import Site
-import uuid
 
 
 class ProfitBase(object):
@@ -23,24 +20,30 @@ class ProfitBase(object):
                 "pb_api_key": self.api_key,
             }
         }
-        self.limit = 1000
 
     def update_base(self):
         self.authenticate()
         self.get_projects()
         self.get_houses()
-        # self.get_properties()
-        # self.get_special_offers()
+        self.get_properties()
+        self.get_special_offers()
 
-    # def create_booking(self, data):
-    #     self.authenticate()
-    #     self.send_booking_order(data)
-    #
-    # def send_booking_order(self, data):
-    #     url = self.base_url + f'/orders?access_token={self.token}'
-    #     response = requests.post(url, headers=self.default_header, data=json.dumps(data))
-    #     return response.status_code
-    #
+    def create_booking(self, name, phone, email, property_id, comment):
+        self.authenticate()
+        self.send_booking_order(name, phone, email, property_id, comment)
+
+    def send_booking_order(self, name, phone, email, property_id, comment):
+        url = self.base_url + f'/orders?access_token={self.token}'
+        data = {
+            'name': name,
+            'phone': phone,
+            'email': email,
+            'property_id': property_id,
+            'comment': comment,
+        }
+        response = requests.post(url, headers=self.default_header, data=json.dumps(data))
+        return response.status_code
+
     def authenticate(self):
         print('authenticating...')
         url = self.base_url + '/authentication'
@@ -53,19 +56,17 @@ class ProfitBase(object):
         response = requests.get(url, headers=self.default_header)
         for item in response.json():
             project = Project.objects.filter(profitbase_id=item['id']).first()
-            city = City.objects.get_or_create(title=item['locality'])
+            city = City.objects.get_or_create(title=item['locality'])[0]
             data = {
-                'title': item['title'],
+                'name': item['title'],
                 'city': city,
             }
             if project is None:
-                # create
                 Project.objects.create(
                     profitbase_id=item['id'],
                     **data,
                 )
             else:
-                # update
                 Project.objects.filter(profitbase_id=item['id']).update(**data)
 
     def get_houses(self):
@@ -74,98 +75,136 @@ class ProfitBase(object):
         response = requests.get(url, headers=self.default_header)
         for item in response.json()['data']:
             house = House.objects.filter(profitbase_id=item['id']).first()
-            project = Project.objects.filter(profitbase_id=item['projectId']).first()
+            project = Project.objects.get_or_create(profitbase_id=item['projectId'])[0]
             data = {
-                'project': project,
-                'title': item['title'],
+                'self_project': project,
+                'name': item['title'],
             }
             if house is None:
-                # create
                 House.objects.create(
                     profitbase_id=item['id'],
                     **data,
                 )
             else:
-                # update
                 House.objects.filter(profitbase_id=item['id']).update(**data)
 
     def get_properties(self):
         print('getting properties...')
         offset = 0
+        limit = 1000
         while True:
-            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={self.limit}&full=false'
+            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
             response = requests.get(url, headers=self.default_header)
 
             if len(response.json()['data']) == 0:
                 break
 
             offset += 1000
+            limit += 1000
 
             for item in response.json()['data']:
                 property = Property.objects.filter(profitbase_id=item['id']).first()
                 house = House.objects.filter(profitbase_id=item['house_id']).first()
-
-                area_total_decimal = float(item['area']['area_total']) if item['area']['area_total'] is not None else 0
-                area_kitchen_decimal = float(item['area']['area_kitchen']) if item['area']['area_kitchen'] is not None else 0
-
-                section = HouseSection.objects.get_or_create(house=house, title=item['sectionName'])
-                # floor = HouseFloor.objects.filter(section=section, title=item['floor'], property=self)
-
-                # if floor is None:
-                #     floor = HouseFloor(section=section, number=param['floor'])
-                #     floor.save()
-                #     self.floor = floor
-                #     self.save()
-
+                area = get_areas(item)
                 data = {
-                    'house': house,
-                    'title': item['title'],
                     'number': item['number'],
-                    'rooms_amount': item['rooms_amount'],
-                    'section': item['sectionName'],
-                #     'floor': param['floor'], # !!!
-                # self.is_studio = param['studio']
-                # self.is_free_layout = param['free_layout']
-                # self.is_euro_layout = param['euro_layout']
-                # self.has_related_preset_with_layout = param['has_related_preset_with_layout']
-                # self.facing = param['facing']
-                # self.area_total = param['area']['area_total']
-                # if param['area']['area_total'] is not None:
-                #     self.area_total_decimal = float(param['area']['area_total'])
-                # self.area_estimated = param['area']['area_estimated']
-                # self.area_living = param['area']['area_living']
-                # self.area_kitchen = param['area']['area_kitchen']
-                # if param['area']['area_kitchen'] is not None:
-                #     self.area_kitchen_decimal = float(param['area']['area_kitchen'])
-                # self.area_balcony = param['area']['area_balcony']
-                # self.area_without_balcony = param['area']['area_without_balcony']
-                # self.price = param['price']['value']
-                # self.price_per_meter = param['price']['pricePerMeter']
-                # self.status = param['status']
+                    'rooms': item['rooms_amount'],
+                    'studio': item['studio'],
+                    'free_layout': item['free_layout'],
+                    'euro_layout': item['euro_layout'],
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'],
+                    'facing': item['facing'] if item['facing'] is not None else '',
+                    'area_total': area['area_total'],
+                    'area_estimated': area['area_estimated'],
+                    'area_living': area['area_living'],
+                    'area_kitchen': area['area_kitchen'],
+                    'area_balcony': area['area_balcony'],
+                    'area_without_balcony': area['area_without_balcony'],
+                    'price': item['price']['value']
+                    if item['price']['value'] is not None else 0,
+
+                    'price_per_meter': item['price']['pricePerMeter']
+                    if item['price']['pricePerMeter'] is not None else 0,
+
+                    'status': item['status'],
                 }
 
                 if property is None:
-                    # create
                     Property.objects.create(
                         profitbase_id=item['id'],
+                        self_house=house,
                         **data,
                     )
+                    section = HouseSection.objects.get_or_create(house=house,
+                                                                 number=item['sectionName'],
+                                                                 )[0]
+                    floor = HouseFloor.objects.get_or_create(house=house,
+                                                             section=section,
+                                                             number=item['floor'],
+                                                             )[0]
+                    property_data = {
+                        'section': section,
+                        'floor': floor
+                    }
+                    Property.objects.filter(
+                        profitbase_id=item['id']).update(**property_data)
                 else:
-                    # update
                     Property.objects.filter(profitbase_id=item['id']).update(**data)
+                    section = HouseSection.objects.get_or_create(house=house,
+                                                                 number=item['sectionName'],
+                                                                 )[0]
+                    floor = HouseFloor.objects.get_or_create(house=house,
+                                                             section=section,
+                                                             number=item['floor'],
+                                                             )[0]
+                    property_data = {
+                        'section': section,
+                        'floor': floor
+                    }
+                    Property.objects.filter(
+                        profitbase_id=item['id']).update(**property_data)
 
-    #
-    # def get_special_offers(self):
-    #     print('getting special offers...')
-    #     url = self.base_url + f'/special-offer?access_token={self.token}'
-    #     response = requests.get(url, headers=self.default_header)
-    #     for param in response.json():
-    #         offer = PropertySpecialOffer.objects.filter(
-    #             offer_id=param['id']
-    #         ).first()
-    #         if not offer:
-    #             print('creating offer...')
-    #             offer = PropertySpecialOffer().set_self_data(param=param)
-    #         else:
-    #             print('updating offer...')
-    #             offer.set_self_data(param=param)
+    def get_special_offers(self):
+        print('getting special offers...')
+        url = self.base_url + f'/special-offer?access_token={self.token}'
+        response = requests.get(url, headers=self.default_header)
+        for param in response.json():
+            data = {
+                'title': param['name'],
+                'description': param['description'],
+                'start_date': param['startDate']['date'],
+                'finish_date': param['finishDate']['date'],
+                'discount': param['discount']['value'],
+            }
+
+            offer = PropertySpecialOffer.objects.filter(profitbase_id=param['id']).first()
+            if offer is None:
+                offer = PropertySpecialOffer.objects.create(
+                    profitbase_id=param['id'],
+                    **data
+                )
+            else:
+                PropertySpecialOffer.objects.filter(profitbase_id=param['id']).update(**data)
+
+            property_ids = param['propertyIds']
+            properties = Property.objects.filter(profitbase_id__in=property_ids)
+            for property in properties:
+                property.special_offer = offer
+                property.save()
+
+
+def get_areas(item):
+    area = {
+        'area_total': item['area']['area_total'],
+        'area_estimated': item['area']['area_estimated'],
+        'area_living': item['area']['area_living'],
+        'area_kitchen': item['area']['area_kitchen'],
+        'area_balcony': item['area']['area_balcony'],
+        'area_without_balcony': item['area']['area_without_balcony'],
+    }
+    for key, value in area.items():
+        if value is None:
+            area[key] = 0.0
+        else:
+            area[key] = float(value)
+    return area

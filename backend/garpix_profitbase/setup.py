@@ -3,7 +3,6 @@ from os import path
 from m2r import convert
 from django.conf import settings
 
-
 with open(path.join(settings.BASE_DIR, '..', 'README.md'), encoding='utf-8') as f:
     long_description = convert(f.read())
 
@@ -34,4 +33,3 @@ setup(
         'transliterate == 1.10.2',
     ],
 )
-

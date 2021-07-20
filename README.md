@@ -27,8 +27,23 @@ INSTALLED_APPS = [
 PROFITBASE_API_KEY=app-?????????
 PROFITBASE_CLIENT_NAME=???????
 PROFITBASE_COMPANY_ID=????
+ENABLE_GARPIX_AUTH=False
 ```
-Нужно обратиться к администраторам profitbase.ru чтоб они добавили ваш ip в белый список
+
+Также, в settings.py необходимо добавить миксины:
+
+```bash
+GARPIX_PROFITBASE_CITY_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+GARPIX_PROFITBASE_HOUSE_MIXIN = 'garpix_page.models.BasePage'
+GARPIX_PROFITBASE_HOUSE_FLOOR_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+GARPIX_PROFITBASE_HOUSE_SECTION_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+GARPIX_PROFITBASE_PROJECT_MIXIN = 'garpix_page.models.BasePage'
+GARPIX_PROFITBASE_PROPERTY_MIXIN = 'garpix_page.models.BasePage'
+GARPIX_PROFITBASE_SPECIAL_OFFER_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
+```
+
+Нужно обратиться к администраторам profitbase.ru чтоб они добавили ваш ip в белый список.
+
 ## Использование
 
 Для получения данных от profitbase.ru используйте следующую manage.py команду:
