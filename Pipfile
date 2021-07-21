@@ -5,7 +5,7 @@ name = "pypi"
 
 [packages]
 django = "==3.1"
-garpixcms = "==1.7.3"
+garpixcms = "==1.9.0"
 transliterate = "==1.10.2"
 
 [dev-packages]
