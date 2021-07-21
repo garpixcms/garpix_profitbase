@@ -29,6 +29,7 @@ PROFITBASE_CLIENT_NAME=???????
 PROFITBASE_COMPANY_ID=????
 ENABLE_GARPIX_AUTH=False
 ```
+
 Также, в settings.py необходимо добавить миксины:
 
 ```bash
@@ -40,6 +41,9 @@ GARPIX_PROFITBASE_PROJECT_MIXIN = 'garpix_page.models.BasePage'
 GARPIX_PROFITBASE_PROPERTY_MIXIN = 'garpix_page.models.BasePage'
 GARPIX_PROFITBASE_SPECIAL_OFFER_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
 ```
+
+Нужно обратиться к администраторам profitbase.ru чтоб они добавили ваш ip в белый список.
+
 ## Использование
 
 Для получения данных от profitbase.ru используйте следующую manage.py команду:
