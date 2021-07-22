@@ -7,7 +7,7 @@ PropertyMixin = import_string(settings.GARPIX_PROFITBASE_PROPERTY_MIXIN)
 
 class Property(PropertyMixin, models.Model):
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID')
-    self_house = models.ForeignKey('House', on_delete=models.CASCADE, verbose_name='Дом')
+    self_house = models.ForeignKey('House', on_delete=models.CASCADE, verbose_name='Дом', related_name='property')
     number = models.CharField(max_length=256, verbose_name='Номер помещения', blank=True, default='')
     rooms = models.IntegerField(verbose_name='Количество комнат', blank=True, default=1)
     studio = models.BooleanField(default=False, verbose_name='Студия')
