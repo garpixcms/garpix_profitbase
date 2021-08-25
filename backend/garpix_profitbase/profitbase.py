@@ -49,9 +49,10 @@ class ProfitBase(object):
 
     def authenticate(self):
         print('authenticating...')
-        url = self.base_url + '/authentication'
-        response = requests.post(url, data=json.dumps(self.auth_body), headers=self.default_header)
-        self.token = response.json()['access_token']
+        if self.token is None:
+            url = self.base_url + '/authentication'
+            response = requests.post(url, data=json.dumps(self.auth_body), headers=self.default_header)
+            self.token = response.json()['access_token']
 
     def get_projects(self):
         print('getting projects...')
