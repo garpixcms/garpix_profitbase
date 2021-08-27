@@ -35,29 +35,36 @@ class ProfitBase(object):
     def send_booking_order(self, name, phone, email, property_id, comment):
         url = self.base_url + f'/orders?access_token={self.token}'
         data = {
-            'name': name,
-            'phone': phone,
-            'email': email,
-            'property_id': property_id,
-            'comment': comment,
+            'order': {
+                'name': name,
+                'phone': phone,
+                'email': email,
+                'apartment': property_id,
+                'comment': comment,
+                'widget_id': 1,
+            }
         }
         response = requests.post(url, headers=self.default_header, data=json.dumps(data))
         return response.status_code
 
     def authenticate(self):
         print('authenticating...')
-        url = self.base_url + '/authentication'
-        response = requests.post(url, data=json.dumps(self.auth_body), headers=self.default_header)
-        self.token = response.json()['access_token']
+        if self.token is None:
+            url = self.base_url + '/authentication'
+            response = requests.post(url, data=json.dumps(self.auth_body), headers=self.default_header)
+            self.token = response.json()['access_token']
 
     def get_projects(self):
         print('getting projects...')
         url = self.base_url + f'/projects?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
         for item in response.json():
+            if not isinstance(item, dict):
+                break
             project = Project.objects.filter(profitbase_id=item['id']).first()
             city = City.objects.get_or_create(title=item['locality'])[0]
             data = {
+                'title': item['title'],
                 'name': item['title'],
                 'city': city,
             }
@@ -74,11 +81,14 @@ class ProfitBase(object):
         url = self.base_url + f'/house?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
         for item in response.json()['data']:
+            if not isinstance(item, dict):
+                break
             house = House.objects.filter(profitbase_id=item['id']).first()
             project = Project.objects.get_or_create(profitbase_id=item['projectId'])[0]
             data = {
                 'self_project': project,
                 'name': item['title'],
+                'title': item['title'],
             }
             if house is None:
                 House.objects.create(
@@ -96,13 +106,18 @@ class ProfitBase(object):
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
             response = requests.get(url, headers=self.default_header)
 
-            if len(response.json()['data']) == 0:
+            if 'data' not in response.json().keys():
                 break
+            else:
+                if len(response.json()['data']) == 0:
+                    break
 
             offset += 1000
             limit += 1000
 
             for item in response.json()['data']:
+                if not isinstance(item, dict):
+                    break
                 property = Property.objects.filter(profitbase_id=item['id']).first()
                 house = House.objects.filter(profitbase_id=item['house_id']).first()
                 area = get_areas(item)
@@ -128,6 +143,7 @@ class ProfitBase(object):
 
                     'status': item['status'],
                 }
+                data.update({'title': house.name if house.name else 'Помещение'})
 
                 if property is None:
                     Property.objects.create(
@@ -169,6 +185,8 @@ class ProfitBase(object):
         url = self.base_url + f'/special-offer?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
         for param in response.json():
+            if not isinstance(param, dict):
+                break
             data = {
                 'title': param['name'],
                 'description': param['description'],
