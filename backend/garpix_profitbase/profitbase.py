@@ -1,4 +1,4 @@
-from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor
+from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
 import os
 import requests
 import json
@@ -176,6 +176,105 @@ class ProfitBase(object):
                     property_data = {
                         'section': section,
                         'floor': floor
+                    }
+                    Property.objects.filter(
+                        profitbase_id=item['id']).update(**property_data)
+
+    def get_properties_with_layout_plan(self):
+        print('getting properties...')
+        offset = 0
+        limit = 1000
+        while True:
+            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
+            response = requests.get(url, headers=self.default_header)
+
+            if 'data' not in response.json().keys():
+                break
+            else:
+                if len(response.json()['data']) == 0:
+                    break
+
+            offset += 1000
+            limit += 1000
+
+            for item in response.json()['data']:
+                if not isinstance(item, dict):
+                    break
+                property = Property.objects.filter(profitbase_id=item['id']).first()
+                house = House.objects.filter(profitbase_id=item['house_id']).first()
+
+                area = get_areas(item)
+                data = {
+                    'number': item['number'],
+                    'rooms': item['rooms_amount'],
+                    'studio': item['studio'],
+                    'free_layout': item['free_layout'],
+                    'euro_layout': item['euro_layout'],
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'],
+                    'facing': item['facing'] if item['facing'] is not None else '',
+                    'area_total': area['area_total'],
+                    'area_estimated': area['area_estimated'],
+                    'area_living': area['area_living'],
+                    'area_kitchen': area['area_kitchen'],
+                    'area_balcony': area['area_balcony'],
+                    'area_without_balcony': area['area_without_balcony'],
+                    'price': item['price']['value']
+                    if item['price']['value'] is not None else 0,
+
+                    'price_per_meter': item['price']['pricePerMeter']
+                    if item['price']['pricePerMeter'] is not None else 0,
+
+                    'status': item['status'],
+                }
+                data.update({'title': house.name if house.name else 'Помещение'})
+
+                if property is None:
+                    Property.objects.create(
+                        profitbase_id=item['id'],
+                        self_house=house,
+                        **data,
+                    )
+                    section = HouseSection.objects.get_or_create(house=house,
+                                                                 number=item['sectionName'],
+                                                                 )[0]
+                    floor = HouseFloor.objects.get_or_create(house=house,
+                                                             section=section,
+                                                             number=item['floor'],
+                                                             )[0]
+                    layout_plan = LayoutPlan.objects.get_or_create(
+                        rooms=item['rooms_amount'],
+                        area_total=area['area_total'],
+                        price=item['price']['value'],
+                        self_house=house,
+                        floor=floor,
+                    )[0]
+                    property_data = {
+                        'section': section,
+                        'floor': floor,
+                        'layout_plan': layout_plan
+                    }
+                    Property.objects.filter(
+                        profitbase_id=item['id']).update(**property_data)
+                else:
+                    Property.objects.filter(profitbase_id=item['id']).update(**data)
+                    section = HouseSection.objects.get_or_create(house=house,
+                                                                 number=item['sectionName'],
+                                                                 )[0]
+                    floor = HouseFloor.objects.get_or_create(house=house,
+                                                             section=section,
+                                                             number=item['floor'],
+                                                             )[0]
+                    layout_plan = LayoutPlan.objects.get_or_create(
+                        rooms=item['rooms_amount'],
+                        area_total=area['area_total'],
+                        price=item['price']['value'],
+                        self_house=house,
+                        floor=floor,
+                    )[0]
+                    property_data = {
+                        'section': section,
+                        'floor': floor,
+                        'layout_plan': layout_plan
                     }
                     Property.objects.filter(
                         profitbase_id=item['id']).update(**property_data)

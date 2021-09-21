@@ -7,6 +7,8 @@ PropertyMixin = import_string(settings.GARPIX_PROFITBASE_PROPERTY_MIXIN)
 
 class Property(PropertyMixin, models.Model):
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID')
+    layout_plan = models.ForeignKey('LayoutPlan', on_delete=models.SET_NULL, verbose_name='Планировка',
+                                    related_name='property', blank=True, null=True)
     self_house = models.ForeignKey('House', on_delete=models.CASCADE, verbose_name='Дом', related_name='property',
                                    blank=True, null=True)
     number = models.CharField(max_length=256, verbose_name='Номер помещения', blank=True, default='')
@@ -23,9 +25,9 @@ class Property(PropertyMixin, models.Model):
     area_kitchen = models.FloatField(verbose_name='Площадь кухни', blank=True, null=True)
     area_balcony = models.FloatField(verbose_name='Площадь балкона/ов', blank=True, null=True)
     area_without_balcony = models.FloatField(verbose_name='Площадь за вычетом балконов', blank=True, null=True)
-    price = models.DecimalField(max_digits=12, decimal_places=4,
+    price = models.DecimalField(max_digits=12, decimal_places=2,
                                 verbose_name='Цена', blank=True, null=True)
-    price_per_meter = models.DecimalField(max_digits=12, decimal_places=4,
+    price_per_meter = models.DecimalField(max_digits=12, decimal_places=2,
                                           verbose_name='Цена за метр', blank=True, null=True)
     status = models.CharField(max_length=350, verbose_name='Статус', blank=True, null=True)
 
