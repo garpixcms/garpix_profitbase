@@ -9,7 +9,8 @@ class HouseFloor(HouseFloorMixin, models.Model):
     number = models.IntegerField(verbose_name='Номер Этажа', blank=True, default=1)
     section = models.ForeignKey('HouseSection', verbose_name='Секция',
                                 related_name='floor', on_delete=models.CASCADE)
-    house = models.ForeignKey('House', verbose_name='Дом', related_name='floor', on_delete=models.CASCADE)
+    house = models.ForeignKey('House', verbose_name='Дом', related_name='floor', on_delete=models.CASCADE,
+                              blank=True, null=True)
 
     class Meta:
         verbose_name = 'Этаж'
