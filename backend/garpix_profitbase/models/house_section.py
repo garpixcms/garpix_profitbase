@@ -7,7 +7,8 @@ HouseSectionMixin = import_string(settings.GARPIX_PROFITBASE_HOUSE_SECTION_MIXIN
 
 class HouseSection(HouseSectionMixin, models.Model):
     number = models.CharField(max_length=256, verbose_name='Номер подъезда', blank=True, default='')
-    house = models.ForeignKey('House', verbose_name='Дом', related_name='section', on_delete=models.CASCADE)
+    house = models.ForeignKey('House', verbose_name='Дом', related_name='section', on_delete=models.CASCADE,
+                              null=True, blank=True)
 
     class Meta:
         verbose_name = 'Подьезд'

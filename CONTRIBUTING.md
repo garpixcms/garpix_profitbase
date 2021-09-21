@@ -36,6 +36,7 @@ pipenv shell
 
 ```
 docker-compose up -d
+python3 backend/manage.py makemigrations garpix_profitbase
 python3 backend/manage.py migrate
 python3 backend/manage.py createsuperuser
 ```
@@ -56,3 +57,4 @@ For documentation:
 mkdocs serve
 mkdocs gh-deploy
 ```
+

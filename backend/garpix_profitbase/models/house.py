@@ -10,7 +10,8 @@ class House(HouseMixin, models.Model):
     name = models.CharField(max_length=100, verbose_name='Название')
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID', blank=True, null=True)
     self_project = models.ForeignKey(Project, on_delete=models.CASCADE,
-                                     verbose_name='Проект', related_name='house')
+                                     verbose_name='Проект', related_name='house',
+                                     blank=True, null=True)
 
     def __str__(self):
         return self.title

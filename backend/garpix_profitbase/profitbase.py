@@ -210,6 +210,81 @@ class ProfitBase(object):
                 property.special_offer = offer
                 property.save()
 
+    def get_houses_without_relationships(self):
+        print('getting houses...')
+        url = self.base_url + f'/house?access_token={self.token}'
+        response = requests.get(url, headers=self.default_header)
+        for item in response.json()['data']:
+            if not isinstance(item, dict):
+                break
+            house = House.objects.filter(profitbase_id=item['id']).first()
+            data = {
+                'name': item['title'],
+                'title': item['title'],
+            }
+            if house is None:
+                House.objects.create(
+                    profitbase_id=item['id'],
+                    **data,
+                )
+            else:
+                House.objects.filter(profitbase_id=item['id']).update(**data)
+
+    def get_properties_without_relationships(self):
+        print('getting properties...')
+        offset = 0
+        limit = 1000
+        while True:
+            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
+            response = requests.get(url, headers=self.default_header)
+
+            if 'data' not in response.json().keys():
+                break
+            else:
+                if len(response.json()['data']) == 0:
+                    break
+
+            offset += 1000
+            limit += 1000
+
+            for item in response.json()['data']:
+                if not isinstance(item, dict):
+                    break
+                property = Property.objects.filter(profitbase_id=item['id']).first()
+                house = House.objects.filter(profitbase_id=item['house_id']).first()
+                area = get_areas(item)
+                data = {
+                    'number': item['number'],
+                    'rooms': item['rooms_amount'],
+                    'studio': item['studio'],
+                    'free_layout': item['free_layout'],
+                    'euro_layout': item['euro_layout'],
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'],
+                    'facing': item['facing'] if item['facing'] is not None else '',
+                    'area_total': area['area_total'],
+                    'area_estimated': area['area_estimated'],
+                    'area_living': area['area_living'],
+                    'area_kitchen': area['area_kitchen'],
+                    'area_balcony': area['area_balcony'],
+                    'area_without_balcony': area['area_without_balcony'],
+                    'price': item['price']['value']
+                    if item['price']['value'] is not None else 0,
+
+                    'price_per_meter': item['price']['pricePerMeter']
+                    if item['price']['pricePerMeter'] is not None else 0,
+
+                    'status': item['status'],
+                }
+                data.update({'title': house.name if house.name else 'Помещение'})
+
+                if property is None:
+                    Property.objects.create(
+                        profitbase_id=item['id'],
+                        **data,
+                    )
+                else:
+                    Property.objects.filter(profitbase_id=item['id']).update(**data)
+
 
 def get_areas(item):
     area = {
