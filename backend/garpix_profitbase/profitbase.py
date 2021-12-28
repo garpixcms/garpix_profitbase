@@ -1,3 +1,5 @@
+from django.core.exceptions import MultipleObjectsReturned
+from django.db import IntegrityError
 from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
 import os
 import requests
@@ -5,7 +7,7 @@ import json
 
 
 class ProfitBase(object):
-    def __init__(self, pb_company_id=os.getenv('PROFITBASE_COMPANY_ID'), api_key=os.getenv('PROFITBASE_API_KEY'),
+    def __init__(self, init_projects=False, init_special_offers=False, pb_company_id=os.getenv('PROFITBASE_COMPANY_ID'), api_key=os.getenv('PROFITBASE_API_KEY'),
                  client_name=os.getenv('PROFITBASE_CLIENT_NAME')):
         self.base_url = f'https://pb{pb_company_id}.profitbase.ru/api/v4/json'
         self.api_key = api_key
@@ -20,13 +22,17 @@ class ProfitBase(object):
                 "pb_api_key": self.api_key,
             }
         }
+        self.init_projects = init_projects
+        self.init_special_offers = init_special_offers
 
     def update_base(self):
         self.authenticate()
-        self.get_projects()
+        if self.init_projects:
+            self.get_projects()
         self.get_houses()
-        self.get_properties()
-        self.get_special_offers()
+        self.get_properties_with_layout_plan()
+        if self.init_special_offers:
+            self.get_special_offers()
 
     def create_booking(self, name, phone, email, property_id, comment):
         self.authenticate()
@@ -62,17 +68,20 @@ class ProfitBase(object):
             if not isinstance(item, dict):
                 break
             project = Project.objects.filter(profitbase_id=item['id']).first()
-            city = City.objects.get_or_create(title=item['locality'])[0]
-            data = {
-                'title': item['title'],
-                'name': item['title'],
-                'city': city,
-            }
-            if project is None:
-                Project.objects.create(
-                    profitbase_id=item['id'],
-                    **data,
-                )
+            try:
+                city = City.objects.get_or_create(title=item['locality'])[0]
+                data = {
+                    'title': item['title'],
+                    'name': item['title'],
+                    'city': city,
+                }
+                if project is None:
+                    Project.objects.create(
+                        profitbase_id=item['id'],
+                        **data,
+                    )
+            except (MultipleObjectsReturned, IntegrityError):
+                print("Элемент проекта не создан\n", data, "\n")
             else:
                 Project.objects.filter(profitbase_id=item['id']).update(**data)
 
@@ -84,19 +93,28 @@ class ProfitBase(object):
             if not isinstance(item, dict):
                 break
             house = House.objects.filter(profitbase_id=item['id']).first()
-            project = Project.objects.get_or_create(profitbase_id=item['projectId'])[0]
             data = {
-                'self_project': project,
                 'name': item['title'],
                 'title': item['title'],
             }
-            if house is None:
-                House.objects.create(
-                    profitbase_id=item['id'],
-                    **data,
-                )
+            if self.init_projects:
+                try:
+                    project = Project.objects.get_or_create(profitbase_id=item['projectId'])[0]
+                    data.update({'self_project': project})
+                except django.core.exceptions.MultipleObjectsReturned:
+                    pass
             else:
-                House.objects.filter(profitbase_id=item['id']).update(**data)
+                data.update({'self_project': None})
+            try:
+                if house is None:
+                    House.objects.create(
+                        profitbase_id=item['id'],
+                        **data,
+                    )
+                else:
+                    House.objects.filter(profitbase_id=item['id']).update(**data)
+            except (MultipleObjectsReturned, IntegrityError):
+                print("Элемент дома не создан\n", data, "\n")
 
     def get_properties(self):
         print('getting properties...')
@@ -105,7 +123,6 @@ class ProfitBase(object):
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
             response = requests.get(url, headers=self.default_header)
-
             if 'data' not in response.json().keys():
                 break
             else:
@@ -146,40 +163,46 @@ class ProfitBase(object):
                 data.update({'title': house.name if house.name else 'Помещение'})
 
                 if property is None:
-                    Property.objects.create(
-                        profitbase_id=item['id'],
-                        self_house=house,
-                        **data,
-                    )
-                    section = HouseSection.objects.get_or_create(house=house,
-                                                                 number=item['sectionName'],
+                    try: 
+                        Property.objects.create(
+                            profitbase_id=item['id'],
+                            self_house=house,
+                            **data,
+                        )
+                        section = HouseSection.objects.get_or_create(house=house,
+                                                                     number=item['sectionName'],
+                                                                     )[0]
+                        floor = HouseFloor.objects.get_or_create(house=house,
+                                                                 section=section,
+                                                                 number=item['floor'],
                                                                  )[0]
-                    floor = HouseFloor.objects.get_or_create(house=house,
-                                                             section=section,
-                                                             number=item['floor'],
-                                                             )[0]
-                    property_data = {
-                        'section': section,
-                        'floor': floor
-                    }
-                    Property.objects.filter(
-                        profitbase_id=item['id']).update(**property_data)
+                        property_data = {
+                            'section': section,
+                            'floor': floor
+                        }
+                        Property.objects.filter(
+                            profitbase_id=item['id']).update(**property_data)
+                    except (MultipleObjectsReturned, IntegrityError):
+                        print("Элемент помещения не создан\n", data, "\n")
                 else:
-                    Property.objects.filter(profitbase_id=item['id']).update(**data)
-                    section = HouseSection.objects.get_or_create(house=house,
-                                                                 number=item['sectionName'],
+                    try:
+                        Property.objects.filter(profitbase_id=item['id']).update(**data)
+                        section = HouseSection.objects.get_or_create(house=house,
+                                                                     number=item['sectionName'],
+                                                                     )[0]
+                        floor = HouseFloor.objects.get_or_create(house=house,
+                                                                 section=section,
+                                                                 number=item['floor'],
                                                                  )[0]
-                    floor = HouseFloor.objects.get_or_create(house=house,
-                                                             section=section,
-                                                             number=item['floor'],
-                                                             )[0]
-                    property_data = {
-                        'section': section,
-                        'floor': floor
-                    }
-                    Property.objects.filter(
-                        profitbase_id=item['id']).update(**property_data)
-
+                        property_data = {
+                            'section': section,
+                            'floor': floor
+                        }
+                        Property.objects.filter(
+                            profitbase_id=item['id']).update(**property_data)
+                    except (MultipleObjectsReturned, IntegrityError):
+                        print("Элемент помещения не создан\n", data, "\n")
+    
     def get_properties_with_layout_plan(self):
         print('getting properties...')
         offset = 0
@@ -229,55 +252,61 @@ class ProfitBase(object):
                 data.update({'title': house.name if house.name else 'Помещение'})
 
                 if property is None:
-                    Property.objects.create(
-                        profitbase_id=item['id'],
-                        self_house=house,
-                        **data,
-                    )
-                    section = HouseSection.objects.get_or_create(house=house,
-                                                                 number=item['sectionName'],
+                    try:
+                        Property.objects.create(
+                            profitbase_id=item['id'],
+                            self_house=house,
+                            **data,
+                        )
+                        section = HouseSection.objects.get_or_create(house=house,
+                                                                     number=item['sectionName'],
+                                                                     )[0]
+                        floor = HouseFloor.objects.get_or_create(house=house,
+                                                                 section=section,
+                                                                 number=item['floor'],
                                                                  )[0]
-                    floor = HouseFloor.objects.get_or_create(house=house,
-                                                             section=section,
-                                                             number=item['floor'],
-                                                             )[0]
-                    layout_plan = LayoutPlan.objects.get_or_create(
-                        rooms=item['rooms_amount'],
-                        area_total=area['area_total'],
-                        price=item['price']['value'],
-                        self_house=house,
-                        floor=floor,
-                    )[0]
-                    property_data = {
-                        'section': section,
-                        'floor': floor,
-                        'layout_plan': layout_plan
-                    }
-                    Property.objects.filter(
-                        profitbase_id=item['id']).update(**property_data)
+                        layout_plan = LayoutPlan.objects.get_or_create(
+                            rooms=item['rooms_amount'],
+                            area_total=area['area_total'],
+                            price=item['price']['value'],
+                            self_house=house,
+                            floor=floor,
+                        )[0]
+                        property_data = {
+                            'section': section,
+                            'floor': floor,
+                            'layout_plan': layout_plan
+                        }
+                        Property.objects.filter(
+                            profitbase_id=item['id']).update(**property_data)
+                    except (MultipleObjectsReturned, IntegrityError):
+                        print("Элемент помещения не создан\n", data, "\n")
                 else:
-                    Property.objects.filter(profitbase_id=item['id']).update(**data)
-                    section = HouseSection.objects.get_or_create(house=house,
-                                                                 number=item['sectionName'],
+                    try:
+                        Property.objects.filter(profitbase_id=item['id']).update(**data)
+                        section = HouseSection.objects.get_or_create(house=house,
+                                                                     number=item['sectionName'],
+                                                                     )[0]
+                        floor = HouseFloor.objects.get_or_create(house=house,
+                                                                 section=section,
+                                                                 number=item['floor'],
                                                                  )[0]
-                    floor = HouseFloor.objects.get_or_create(house=house,
-                                                             section=section,
-                                                             number=item['floor'],
-                                                             )[0]
-                    layout_plan = LayoutPlan.objects.get_or_create(
-                        rooms=item['rooms_amount'],
-                        area_total=area['area_total'],
-                        price=item['price']['value'],
-                        self_house=house,
-                        floor=floor,
-                    )[0]
-                    property_data = {
-                        'section': section,
-                        'floor': floor,
-                        'layout_plan': layout_plan
-                    }
-                    Property.objects.filter(
-                        profitbase_id=item['id']).update(**property_data)
+                        layout_plan = LayoutPlan.objects.get_or_create(
+                            rooms=item['rooms_amount'],
+                            area_total=area['area_total'],
+                            price=item['price']['value'],
+                            self_house=house,
+                            floor=floor,
+                        )[0]
+                        property_data = {
+                            'section': section,
+                            'floor': floor,
+                            'layout_plan': layout_plan
+                        }
+                        Property.objects.filter(
+                            profitbase_id=item['id']).update(**property_data)
+                    except (MultipleObjectsReturned, IntegrityError):
+                        print("Элемент помещения не создан\n", data, "\n")
 
     def get_special_offers(self):
         print('getting special offers...')
@@ -291,43 +320,49 @@ class ProfitBase(object):
                 'description': param['description'],
                 'start_date': param['startDate']['date'],
                 'finish_date': param['finishDate']['date'],
-                'discount': param['discount']['value'],
+                'discount': param['discount']['value'] if param['discount']['value']>0 else 0.,
             }
+            try:
+                offer = PropertySpecialOffer.objects.filter(profitbase_id=param['id']).first()
 
-            offer = PropertySpecialOffer.objects.filter(profitbase_id=param['id']).first()
-            if offer is None:
-                offer = PropertySpecialOffer.objects.create(
-                    profitbase_id=param['id'],
-                    **data
-                )
-            else:
-                PropertySpecialOffer.objects.filter(profitbase_id=param['id']).update(**data)
+                if offer is None:
+                    offer = PropertySpecialOffer.objects.create(
+                        profitbase_id=param['id'],
+                        **data
+                    )
+                else:
+                    PropertySpecialOffer.objects.filter(profitbase_id=param['id']).update(**data)
 
-            property_ids = param['propertyIds']
-            properties = Property.objects.filter(profitbase_id__in=property_ids)
-            for property in properties:
-                property.special_offer = offer
-                property.save()
+                property_ids = param['propertyIds']
+                properties = Property.objects.filter(profitbase_id__in=property_ids)
+                for property in properties:
+                    property.special_offer = offer
+                    property.save()
+            except (MultipleObjectsReturned, IntegrityError):
+                print("Элемент спецпредложения не создан\n", data, "\n")
 
     def get_houses_without_relationships(self):
         print('getting houses...')
         url = self.base_url + f'/house?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
         for item in response.json()['data']:
-            if not isinstance(item, dict):
-                break
-            house = House.objects.filter(profitbase_id=item['id']).first()
-            data = {
-                'name': item['title'],
-                'title': item['title'],
-            }
-            if house is None:
-                House.objects.create(
-                    profitbase_id=item['id'],
-                    **data,
-                )
-            else:
-                House.objects.filter(profitbase_id=item['id']).update(**data)
+            try:
+                if not isinstance(item, dict):
+                    break
+                house = House.objects.filter(profitbase_id=item['id']).first()
+                data = {
+                    'name': item['title'],
+                    'title': item['title'],
+                }
+                if house is None:
+                    House.objects.create(
+                        profitbase_id=item['id'],
+                        **data,
+                    )
+                else:
+                    House.objects.filter(profitbase_id=item['id']).update(**data)
+            except (MultipleObjectsReturned, IntegrityError):
+                print("Элемент дома не создан\n", data, "\n")
 
     def get_properties_without_relationships(self):
         print('getting properties...')
@@ -376,13 +411,16 @@ class ProfitBase(object):
                 }
                 data.update({'title': house.name if house.name else 'Помещение'})
 
-                if property is None:
-                    Property.objects.create(
-                        profitbase_id=item['id'],
-                        **data,
-                    )
-                else:
-                    Property.objects.filter(profitbase_id=item['id']).update(**data)
+                try:
+                    if property is None:
+                        Property.objects.create(
+                            profitbase_id=item['id'],
+                            **data,
+                        )
+                    else:
+                        Property.objects.filter(profitbase_id=item['id']).update(**data)
+                except (MultipleObjectsReturned, IntegrityError):
+                    print("Элемент помещения не создан\n", data, "\n")
 
 
 def get_areas(item):
@@ -400,3 +438,4 @@ def get_areas(item):
         else:
             area[key] = float(value)
     return area
+
