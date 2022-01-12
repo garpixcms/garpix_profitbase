@@ -1,9 +1,12 @@
+import django.core.exceptions
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError
 from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
+from django.core.files.images import ImageFile
 import os
 import requests
 import json
+from io import BytesIO
 
 
 class ProfitBase(object):
@@ -204,30 +207,57 @@ class ProfitBase(object):
                         print("Элемент помещения не создан\n", data, "\n")
     
     def get_properties_with_layout_plan(self):
+        def get_layout_plan(data, id, data_out, house):
+            for item in data:
+                if id in item['properties']:
+                    try:
+                        lp = LayoutPlan.objects.get(profitbase_id=item['id'])
+                        lp.rooms=data_out['rooms_amount']
+                        lp.area_total = data_out['area']['area_total']
+                        lp.price = data_out['price']['value']
+                        lp.self_house = house
+                        lp.name=item['code']
+                        lp.save()
+                    except django.core.exceptions.ObjectDoesNotExist:
+                        lp = LayoutPlan.objects.get_or_create(
+                            profitbase_id=item['id'],
+                            rooms=data_out['rooms_amount'],
+                            area_total=data_out['area']['area_total'],
+                            price=data_out['price']['value'],
+                            self_house=house,
+                            name=item['code']
+                        )[0]
+                    return lp
         print('getting properties...')
         offset = 0
         limit = 1000
+        url = f'{self.base_url}/plan?access_token={self.token}'
+        response = requests.get(url, headers=self.default_header)
+        if 'data' not in response.json().keys():
+            print("NO LAYOUTS DATA")
+            return
+        layout_data = response.json()['data']
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
             response = requests.get(url, headers=self.default_header)
-
-            if 'data' not in response.json().keys():
+            if 'data' not in response.json().keys() or len(response.json()['data']) == 0:
+                print(f"NO PROPERTY DATA, {offset=}, {limit=}")
                 break
-            else:
-                if len(response.json()['data']) == 0:
-                    break
 
             offset += 1000
             limit += 1000
 
             for item in response.json()['data']:
+
                 if not isinstance(item, dict):
                     break
                 property = Property.objects.filter(profitbase_id=item['id']).first()
                 house = House.objects.filter(profitbase_id=item['house_id']).first()
 
                 area = get_areas(item)
+
                 data = {
+                    ''  
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],
@@ -265,13 +295,8 @@ class ProfitBase(object):
                                                                  section=section,
                                                                  number=item['floor'],
                                                                  )[0]
-                        layout_plan = LayoutPlan.objects.get_or_create(
-                            rooms=item['rooms_amount'],
-                            area_total=area['area_total'],
-                            price=item['price']['value'],
-                            self_house=house,
-                            floor=floor,
-                        )[0]
+
+                        layout_plan = get_layout_plan(layout_data, str(item['id']), item, house)
                         property_data = {
                             'section': section,
                             'floor': floor,
@@ -291,18 +316,13 @@ class ProfitBase(object):
                                                                  section=section,
                                                                  number=item['floor'],
                                                                  )[0]
-                        layout_plan = LayoutPlan.objects.get_or_create(
-                            rooms=item['rooms_amount'],
-                            area_total=area['area_total'],
-                            price=item['price']['value'],
-                            self_house=house,
-                            floor=floor,
-                        )[0]
+                        layout_plan = get_layout_plan(layout_data, str(item['id']), item, house)
                         property_data = {
                             'section': section,
                             'floor': floor,
                             'layout_plan': layout_plan
                         }
+
                         Property.objects.filter(
                             profitbase_id=item['id']).update(**property_data)
                     except (MultipleObjectsReturned, IntegrityError):
@@ -438,4 +458,5 @@ def get_areas(item):
         else:
             area[key] = float(value)
     return area
+
 
