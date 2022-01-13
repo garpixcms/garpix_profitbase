@@ -6,6 +6,7 @@ LayoutPlanMixin = import_string(settings.GARPIX_PROFITBASE_LAYOUT_PLAN_MIXIN)
 
 
 class LayoutPlan(LayoutPlanMixin, models.Model):
+    profitbase_id = models.IntegerField(blank=True, null=True, verbose_name='ProfitBase ID')
     name = models.CharField(max_length=256, verbose_name='Название планировки', blank=True, default='LayoutPlanName')
     is_active = models.BooleanField(default=True, verbose_name='Планировка активна?')
     rooms = models.IntegerField(verbose_name='Количество комнат', blank=True, default=1)
@@ -15,10 +16,9 @@ class LayoutPlan(LayoutPlanMixin, models.Model):
 
     self_house = models.ForeignKey('House', on_delete=models.SET_NULL, verbose_name='Дом', related_name='layout_plan',
                                    blank=True, null=True)
-    floor = models.ForeignKey('HouseFloor', verbose_name='Этаж',
-                              related_name='layout_plan', on_delete=models.SET_NULL,
-                              blank=True, null=True)
+
 
     class Meta:
         verbose_name = 'Планировка'
         verbose_name_plural = 'Планировки'
+
