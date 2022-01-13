@@ -1,3 +1,7 @@
+### 1.3.1 (13.01.2022)
+
+- Layouts proceeding bug fix.
+
 ### 1.3.0 (12.01.2022)
 
 - Layouts proceeding.
