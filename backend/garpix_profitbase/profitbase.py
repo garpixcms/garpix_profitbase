@@ -100,14 +100,6 @@ class ProfitBase(object):
                 'name': item['title'],
                 'title': item['title'],
             }
-            if self.init_projects:
-                try:
-                    project = Project.objects.get_or_create(profitbase_id=item['projectId'])[0]
-                    data.update({'self_project': project})
-                except django.core.exceptions.MultipleObjectsReturned:
-                    pass
-            else:
-                data.update({'self_project': None})
             try:
                 if house is None:
                     House.objects.create(
@@ -458,5 +450,6 @@ def get_areas(item):
         else:
             area[key] = float(value)
     return area
+
 
 
