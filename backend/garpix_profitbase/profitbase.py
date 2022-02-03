@@ -10,7 +10,8 @@ from io import BytesIO
 
 
 class ProfitBase(object):
-    def __init__(self, init_projects=False, init_special_offers=False, pb_company_id=os.getenv('PROFITBASE_COMPANY_ID'), api_key=os.getenv('PROFITBASE_API_KEY'),
+    def __init__(self, init_projects=False, init_special_offers=False, pb_company_id=os.getenv('PROFITBASE_COMPANY_ID'),
+                 api_key=os.getenv('PROFITBASE_API_KEY'),
                  client_name=os.getenv('PROFITBASE_CLIENT_NAME')):
         self.base_url = f'https://pb{pb_company_id}.profitbase.ru/api/v4/json'
         self.api_key = api_key
@@ -33,7 +34,8 @@ class ProfitBase(object):
         if self.init_projects:
             self.get_projects()
         self.get_houses()
-        self.get_properties_with_layout_plan()
+        self.get_layout_plans()
+        self.get_properties()
         if self.init_special_offers:
             self.get_special_offers()
 
@@ -61,6 +63,8 @@ class ProfitBase(object):
         if self.token is None:
             url = self.base_url + '/authentication'
             response = requests.post(url, data=json.dumps(self.auth_body), headers=self.default_header)
+            if response.status_code != 200:
+                raise PermissionError(response.text)
             self.token = response.json()['access_token']
 
     def get_projects(self):
@@ -115,6 +119,11 @@ class ProfitBase(object):
         print('getting properties...')
         offset = 0
         limit = 1000
+        properties_in_db = Property.objects.all()
+        houses_in_db = House.objects.all()
+
+        properties_create = []
+        properties_update = []
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
             response = requests.get(url, headers=self.default_header)
@@ -130,9 +139,27 @@ class ProfitBase(object):
             for item in response.json()['data']:
                 if not isinstance(item, dict):
                     break
-                property = Property.objects.filter(profitbase_id=item['id']).first()
-                house = House.objects.filter(profitbase_id=item['house_id']).first()
+
+                house = list(
+                    filter(lambda house: house.profitbase_id == item['house_id'], houses_in_db))
+
+                if len(house) > 0:
+                    house_title = house[0].name
+                    house = house[0]
+                else:
+                    house_title = 'Помещение'
+                    house = None
+
                 area = get_areas(item)
+
+                section = HouseSection.objects.get_or_create(house=house,
+                                                             number=item['sectionName'],
+                                                             )[0]
+                floor = HouseFloor.objects.get_or_create(house=house,
+                                                         section=section,
+                                                         number=item['floor'],
+                                                         )[0]
+
                 data = {
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
@@ -154,171 +181,94 @@ class ProfitBase(object):
                     if item['price']['pricePerMeter'] is not None else 0,
 
                     'status': item['status'],
+                    'title': house_title,
+                    'section': section,
+                    'floor': floor,
+                    'self_house': house
                 }
-                data.update({'title': house.name if house.name else 'Помещение'})
 
-                if property is None:
-                    try: 
-                        Property.objects.create(
-                            profitbase_id=item['id'],
-                            self_house=house,
-                            **data,
-                        )
-                        section = HouseSection.objects.get_or_create(house=house,
-                                                                     number=item['sectionName'],
-                                                                     )[0]
-                        floor = HouseFloor.objects.get_or_create(house=house,
-                                                                 section=section,
-                                                                 number=item['floor'],
-                                                                 )[0]
-                        property_data = {
-                            'section': section,
-                            'floor': floor
-                        }
-                        Property.objects.filter(
-                            profitbase_id=item['id']).update(**property_data)
-                    except (MultipleObjectsReturned, IntegrityError):
-                        print("Элемент помещения не создан\n", data, "\n")
+                db_instance = list(
+                    filter(lambda instance: instance.profitbase_id == item['id'], properties_in_db))
+                if len(db_instance) > 0:
+                    db_instance = db_instance[0]
+                    for attr, value in data.items():
+                        setattr(db_instance, attr, value)
+
+                    properties_update.append(db_instance)
                 else:
-                    try:
-                        Property.objects.filter(profitbase_id=item['id']).update(**data)
-                        section = HouseSection.objects.get_or_create(house=house,
-                                                                     number=item['sectionName'],
-                                                                     )[0]
-                        floor = HouseFloor.objects.get_or_create(house=house,
-                                                                 section=section,
-                                                                 number=item['floor'],
-                                                                 )[0]
-                        property_data = {
-                            'section': section,
-                            'floor': floor
-                        }
-                        Property.objects.filter(
-                            profitbase_id=item['id']).update(**property_data)
-                    except (MultipleObjectsReturned, IntegrityError):
-                        print("Элемент помещения не создан\n", data, "\n")
-    
-    def get_properties_with_layout_plan(self):
-        def get_layout_plan(data, id, data_out, house):
-            for item in data:
-                if id in item['properties']:
-                    try:
-                        lp = LayoutPlan.objects.get(profitbase_id=item['id'])
-                        lp.rooms=data_out['rooms_amount']
-                        lp.area_total = data_out['area']['area_total']
-                        lp.price = data_out['price']['value']
-                        lp.self_house = house
-                        lp.name=item['code']
-                        lp.save()
-                    except django.core.exceptions.ObjectDoesNotExist:
-                        lp = LayoutPlan.objects.get_or_create(
-                            profitbase_id=item['id'],
-                            rooms=data_out['rooms_amount'],
-                            area_total=data_out['area']['area_total'],
-                            price=data_out['price']['value'],
-                            self_house=house,
-                            name=item['code']
-                        )[0]
-                    return lp
-        print('getting properties...')
-        offset = 0
-        limit = 1000
+                    db_instance = Property.objects.create(profitbase_id=item['id'], **data)
+
+        Property.objects.bulk_update(properties_update, ['number', 'rooms', "studio", "free_layout", "euro_layout",
+                                                         "has_related_preset_with_layout", "facing", "area_total", "area_estimated",
+                                                         "area_living", "area_kitchen", "area_balcony", "area_without_balcony",
+                                                         "price", "price_per_meter", "status",
+                                                         "title", "section", "floor", "self_house"])
+
+    def get_layout_plans(self):
+
+        print('getting layout plans...')
+
         url = f'{self.base_url}/plan?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
+
         if 'data' not in response.json().keys():
             print("NO LAYOUTS DATA")
             return
+
         layout_data = response.json()['data']
-        while True:
-            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
-            response = requests.get(url, headers=self.default_header)
-            if 'data' not in response.json().keys() or len(response.json()['data']) == 0:
-                print(f"NO PROPERTY DATA, {offset=}, {limit=}")
+
+        layouts_create = []
+        layouts_update = []
+        properties_update = []
+
+        layouts_in_db = LayoutPlan.objects.all()
+        houses_in_db = House.objects.all()
+
+        properties_in_db = Property.objects.all()
+
+        for layout in layout_data:
+            if not isinstance(layout, dict):
                 break
+            house = list(
+                filter(lambda house: house.profitbase_id == layout['houseId'], houses_in_db))
 
-            offset += 1000
-            limit += 1000
+            if len(house) > 0:
+                house = house[0]
+            else:
+                house = None
 
-            for item in response.json()['data']:
+            data = {
+                "rooms": layout['roomsAmount'],
+                "area_total": layout['areaRange']['min'],
+                "price": layout['priceRange']['min'],
+                "name": layout['code'],
+                "self_house": house
+            }
 
-                if not isinstance(item, dict):
-                    break
-                property = Property.objects.filter(profitbase_id=item['id']).first()
-                house = House.objects.filter(profitbase_id=item['house_id']).first()
+            db_instance = list(
+                filter(lambda instance: instance.profitbase_id == layout['id'], layouts_in_db))
+            if len(db_instance) > 0:
+                db_instance = db_instance[0]
+                for attr, value in data.items():
+                    setattr(db_instance, attr, value)
 
-                area = get_areas(item)
+                layouts_update.append(db_instance)
+            else:
+                db_instance = LayoutPlan(profitbase_id=layout['id'], **data)
+                layouts_create.append(db_instance)
 
-                data = {
-                    ''  
-                    'number': item['number'],
-                    'rooms': item['rooms_amount'],
-                    'studio': item['studio'],
-                    'free_layout': item['free_layout'],
-                    'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'],
-                    'facing': item['facing'] if item['facing'] is not None else '',
-                    'area_total': area['area_total'],
-                    'area_estimated': area['area_estimated'],
-                    'area_living': area['area_living'],
-                    'area_kitchen': area['area_kitchen'],
-                    'area_balcony': area['area_balcony'],
-                    'area_without_balcony': area['area_without_balcony'],
-                    'price': item['price']['value']
-                    if item['price']['value'] is not None else 0,
+            properties = list(
+                filter(lambda property: str(property.profitbase_id) in layout['properties'], properties_in_db))
 
-                    'price_per_meter': item['price']['pricePerMeter']
-                    if item['price']['pricePerMeter'] is not None else 0,
+            if len(properties) > 0:
+                for property in properties:
+                    if property.layout_plan != db_instance:
+                        property.layout_plan = db_instance
+                    properties_update.append(property)
 
-                    'status': item['status'],
-                }
-                data.update({'title': house.name if house.name else 'Помещение'})
-
-                if property is None:
-                    try:
-                        Property.objects.create(
-                            profitbase_id=item['id'],
-                            self_house=house,
-                            **data,
-                        )
-                        section = HouseSection.objects.get_or_create(house=house,
-                                                                     number=item['sectionName'],
-                                                                     )[0]
-                        floor = HouseFloor.objects.get_or_create(house=house,
-                                                                 section=section,
-                                                                 number=item['floor'],
-                                                                 )[0]
-
-                        layout_plan = get_layout_plan(layout_data, str(item['id']), item, house)
-                        property_data = {
-                            'section': section,
-                            'floor': floor,
-                            'layout_plan': layout_plan
-                        }
-                        Property.objects.filter(
-                            profitbase_id=item['id']).update(**property_data)
-                    except (MultipleObjectsReturned, IntegrityError):
-                        print("Элемент помещения не создан\n", data, "\n")
-                else:
-                    try:
-                        Property.objects.filter(profitbase_id=item['id']).update(**data)
-                        section = HouseSection.objects.get_or_create(house=house,
-                                                                     number=item['sectionName'],
-                                                                     )[0]
-                        floor = HouseFloor.objects.get_or_create(house=house,
-                                                                 section=section,
-                                                                 number=item['floor'],
-                                                                 )[0]
-                        layout_plan = get_layout_plan(layout_data, str(item['id']), item, house)
-                        property_data = {
-                            'section': section,
-                            'floor': floor,
-                            'layout_plan': layout_plan
-                        }
-
-                        Property.objects.filter(
-                            profitbase_id=item['id']).update(**property_data)
-                    except (MultipleObjectsReturned, IntegrityError):
-                        print("Элемент помещения не создан\n", data, "\n")
+        LayoutPlan.objects.bulk_create(layouts_create)
+        LayoutPlan.objects.bulk_update(layouts_update, ['rooms', 'area_total', "price", "name", "self_house"])
+        Property.objects.bulk_update(properties_update, ['layout_plan'])
 
     def get_special_offers(self):
         print('getting special offers...')
@@ -332,7 +282,7 @@ class ProfitBase(object):
                 'description': param['description'],
                 'start_date': param['startDate']['date'],
                 'finish_date': param['finishDate']['date'],
-                'discount': param['discount']['value'] if param['discount']['value']>0 else 0.,
+                'discount': param['discount']['value'] if param['discount']['value'] > 0 else 0.,
             }
             try:
                 offer = PropertySpecialOffer.objects.filter(profitbase_id=param['id']).first()
@@ -450,6 +400,3 @@ def get_areas(item):
         else:
             area[key] = float(value)
     return area
-
-
-
