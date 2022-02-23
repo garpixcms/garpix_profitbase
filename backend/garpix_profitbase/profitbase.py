@@ -125,7 +125,7 @@ class ProfitBase(object):
         properties_create = []
         properties_update = []
         while True:
-            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
+            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
             if 'data' not in response.json().keys():
                 break
@@ -137,6 +137,7 @@ class ProfitBase(object):
             limit += 1000
 
             for item in response.json()['data']:
+
                 if not isinstance(item, dict):
                     break
 
@@ -159,15 +160,26 @@ class ProfitBase(object):
                                                          section=section,
                                                          number=item['floor'],
                                                          )[0]
-
+                attributes = item['attributes']
+                custom_fields = get_custom_fields(item)
                 data = {
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'],
-                    'facing': item['facing'] if item['facing'] is not None else '',
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
+                                                                                                    'has_related_preset_with_layout'] is not None else False,
+                    'facing': attributes['facing'] if attributes['facing'] is not None and attributes[
+                        'facing'] != '' else 'Нет',
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
+                                                                                            'combined_bathroom_count'] is not None else 0,
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
+                                                                                              'separated_bathroom_count'] is not None else 0,
+                    'code': attributes['code'],
+                    'description': attributes['description'],
+                    'bti_number': attributes['bti_number'],
+                    'bti_area': attributes['bti_area'],
                     'area_total': area['area_total'],
                     'area_estimated': area['area_estimated'],
                     'area_living': area['area_living'],
@@ -184,7 +196,13 @@ class ProfitBase(object):
                     'title': house_title,
                     'section': section,
                     'floor': floor,
-                    'self_house': house
+                    'self_house': house,
+                    'dressing_room': custom_fields['Гардеробная (да / нет)'] if custom_fields[
+                                                                                    'Гардеробная (да / нет)'] is not None else False,
+                    'garage': custom_fields['Гараж / навес'] if custom_fields['Гараж / навес'] is not None else False,
+                    'type_of_heating': custom_fields['Тип отопления'],
+                    'development_stage': custom_fields['Стадия строительства'],
+                    'number_on_floor': custom_fields['Номер на площадке']
                 }
 
                 db_instance = list(
@@ -199,10 +217,16 @@ class ProfitBase(object):
                     db_instance = Property.objects.create(profitbase_id=item['id'], **data)
 
         Property.objects.bulk_update(properties_update, ['number', 'rooms', "studio", "free_layout", "euro_layout",
-                                                         "has_related_preset_with_layout", "facing", "area_total", "area_estimated",
-                                                         "area_living", "area_kitchen", "area_balcony", "area_without_balcony",
+                                                         "has_related_preset_with_layout", "facing", "area_total",
+                                                         "area_estimated",
+                                                         "area_living", "area_kitchen", "area_balcony",
+                                                         "area_without_balcony",
                                                          "price", "price_per_meter", "status",
-                                                         "title", "section", "floor", "self_house"])
+                                                         "title", "section", "floor", "self_house",
+                                                         "combined_bathroom_count", "separated_bathroom_count", "code",
+                                                         "description",
+                                                         "bti_number", "bti_area", "dressing_room", "garage",
+                                                         "type_of_heating", "development_stage", "number_on_floor"])
 
     def get_layout_plans(self):
 
@@ -227,6 +251,7 @@ class ProfitBase(object):
         properties_in_db = Property.objects.all()
 
         for layout in layout_data:
+
             if not isinstance(layout, dict):
                 break
             house = list(
@@ -331,7 +356,7 @@ class ProfitBase(object):
         offset = 0
         limit = 1000
         while True:
-            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=false'
+            url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
 
             if 'data' not in response.json().keys():
@@ -349,14 +374,25 @@ class ProfitBase(object):
                 property = Property.objects.filter(profitbase_id=item['id']).first()
                 house = House.objects.filter(profitbase_id=item['house_id']).first()
                 area = get_areas(item)
+                attributes = item['planImages']
+                custom_fields = get_custom_fields(item)
                 data = {
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'],
-                    'facing': item['facing'] if item['facing'] is not None else '',
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
+                                                                                                    'has_related_preset_with_layout'] is not None else False,
+                    'facing': attributes['facing'] if attributes['facing'] is not None else 'Нет',
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
+                                                                                            'combined_bathroom_count'] is not None else 0,
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
+                                                                                              'separated_bathroom_count'] is not None else 0,
+                    'code': attributes['code'],
+                    'description': attributes['description'],
+                    'bti_number': attributes['bti_number'],
+                    'bti_area': attributes['bti_area'],
                     'area_total': area['area_total'],
                     'area_estimated': area['area_estimated'],
                     'area_living': area['area_living'],
@@ -370,6 +406,13 @@ class ProfitBase(object):
                     if item['price']['pricePerMeter'] is not None else 0,
 
                     'status': item['status'],
+                    'dressing_room': custom_fields['Гардеробная (да / нет)'] if custom_fields[
+                                                                                    'Гардеробная (да / нет)'] is not None else False,
+                    'garage': custom_fields['Гараж / навес'] if custom_fields['Гараж / навес'] is not None else False,
+                    'type_of_heating': custom_fields['Тип отопления'],
+                    'development_stage': custom_fields['Стадия строительства'],
+                    'number_on_floor': custom_fields['Номер на площадке']
+
                 }
                 data.update({'title': house.name if house.name else 'Помещение'})
 
@@ -400,3 +443,11 @@ def get_areas(item):
         else:
             area[key] = float(value)
     return area
+
+
+def get_custom_fields(item):
+    custom_fields = {}
+    for field in item['custom_fields']:
+        custom_fields.update({field['name']: field['value']})
+    return custom_fields
+
