@@ -124,6 +124,9 @@ class ProfitBase(object):
 
         properties_create = []
         properties_update = []
+
+        propertiy_fields = get_model_fields_list(Property)
+        fields_to_update = property_standart_fields()
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
@@ -197,13 +200,15 @@ class ProfitBase(object):
                     'section': section,
                     'floor': floor,
                     'self_house': house,
-                    'dressing_room': custom_fields['Гардеробная (да / нет)'] if custom_fields[
-                                                                                    'Гардеробная (да / нет)'] is not None else False,
-                    'garage': custom_fields['Гараж / навес'] if custom_fields['Гараж / навес'] is not None else False,
-                    'type_of_heating': custom_fields['Тип отопления'],
-                    'development_stage': custom_fields['Стадия строительства'],
-                    'number_on_floor': custom_fields['Номер на площадке']
                 }
+
+                for field_key, field_value in custom_fields.items():
+                    if field_key in propertiy_fields.keys():
+                        field_name = propertiy_fields[field_key]
+                        if field_value is not None:
+                            data.update({field_name: field_value})
+                            if field_name not in fields_to_update:
+                                fields_to_update.append(field_name)
 
                 db_instance = list(
                     filter(lambda instance: instance.profitbase_id == item['id'], properties_in_db))
@@ -216,17 +221,7 @@ class ProfitBase(object):
                 else:
                     db_instance = Property.objects.create(profitbase_id=item['id'], **data)
 
-        Property.objects.bulk_update(properties_update, ['number', 'rooms', "studio", "free_layout", "euro_layout",
-                                                         "has_related_preset_with_layout", "facing", "area_total",
-                                                         "area_estimated",
-                                                         "area_living", "area_kitchen", "area_balcony",
-                                                         "area_without_balcony",
-                                                         "price", "price_per_meter", "status",
-                                                         "title", "section", "floor", "self_house",
-                                                         "combined_bathroom_count", "separated_bathroom_count", "code",
-                                                         "description",
-                                                         "bti_number", "bti_area", "dressing_room", "garage",
-                                                         "type_of_heating", "development_stage", "number_on_floor"])
+        Property.objects.bulk_update(properties_update, fields_to_update)
 
     def get_layout_plans(self):
 
@@ -355,6 +350,7 @@ class ProfitBase(object):
         print('getting properties...')
         offset = 0
         limit = 1000
+        propertiy_fields = get_model_fields_list(Property)
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
@@ -406,14 +402,11 @@ class ProfitBase(object):
                     if item['price']['pricePerMeter'] is not None else 0,
 
                     'status': item['status'],
-                    'dressing_room': custom_fields['Гардеробная (да / нет)'] if custom_fields[
-                                                                                    'Гардеробная (да / нет)'] is not None else False,
-                    'garage': custom_fields['Гараж / навес'] if custom_fields['Гараж / навес'] is not None else False,
-                    'type_of_heating': custom_fields['Тип отопления'],
-                    'development_stage': custom_fields['Стадия строительства'],
-                    'number_on_floor': custom_fields['Номер на площадке']
-
                 }
+
+                for field_key, field_value in custom_fields:
+                    if field_key in propertiy_fields.keys():
+                        data.update({propertiy_fields[field_key]: field_value})
                 data.update({'title': house.name if house.name else 'Помещение'})
 
                 try:
@@ -448,6 +441,31 @@ def get_areas(item):
 def get_custom_fields(item):
     custom_fields = {}
     for field in item['custom_fields']:
-        custom_fields.update({field['name']: field['value']})
+        if field['value'] == 'Нет' or field['value'] == 'нет':
+            value = False
+        elif field['value'] == 'Да' or field['value'] == 'да':
+            value = True
+        else:
+            value = field['value']
+        custom_fields.update({field['name']: value})
     return custom_fields
 
+
+def get_model_fields_list(Model):
+    prop_fields = {}
+    for f in Model._meta.get_fields():
+        if hasattr(f, 'verbose_name'):
+            prop_fields.update({f.verbose_name: f.name})
+    return prop_fields
+
+
+def property_standart_fields():
+    return ['number', 'rooms', "studio", "free_layout", "euro_layout",
+            "has_related_preset_with_layout", "facing", "area_total",
+            "area_estimated",
+            "area_living", "area_kitchen", "area_balcony",
+            "area_without_balcony",
+            "price", "price_per_meter", "status",
+            "title", "section", "floor", "self_house",
+            "combined_bathroom_count", "separated_bathroom_count", "code",
+            "description", "bti_number", "bti_area"]
