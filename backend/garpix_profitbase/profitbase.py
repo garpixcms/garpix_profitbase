@@ -294,8 +294,7 @@ class ProfitBase(object):
         print('getting special offers...')
         url = self.base_url + f'/special-offer?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
-        print(response.json())
-        special_offers_in_db =  PropertySpecialOffer.objects.all()
+        special_offers_in_db = PropertySpecialOffer.objects.all()
 
         for param in response.json():
             if not isinstance(param, dict):
