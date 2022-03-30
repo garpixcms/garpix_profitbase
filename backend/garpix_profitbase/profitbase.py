@@ -1,12 +1,9 @@
-import django.core.exceptions
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError
 from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
-from django.core.files.images import ImageFile
 import os
 import requests
 import json
-from io import BytesIO
 
 
 class ProfitBase(object):
@@ -115,14 +112,14 @@ class ProfitBase(object):
             except (MultipleObjectsReturned, IntegrityError):
                 print("Элемент дома не создан\n", data, "\n")
 
-    def get_properties(self):
+    def get_properties(self):  # noqa
         print('getting properties...')
         offset = 0
         limit = 1000
         properties_in_db = Property.objects.all()
         houses_in_db = House.objects.all()
 
-        properties_create = []
+        # properties_create = []
         properties_update = []
 
         propertiy_fields = get_model_fields_list(Property)
@@ -171,14 +168,10 @@ class ProfitBase(object):
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
-                                                                                                    'has_related_preset_with_layout'] is not None else False,
-                    'facing': attributes['facing'] if attributes['facing'] is not None and attributes[
-                        'facing'] != '' else 'Нет',
-                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
-                                                                                            'combined_bathroom_count'] is not None else 0,
-                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
-                                                                                              'separated_bathroom_count'] is not None else 0,
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False,
+                    'facing': attributes['facing'] if attributes['facing'] is not None and attributes['facing'] != '' else 'Нет',
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0,
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0,
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
@@ -348,7 +341,7 @@ class ProfitBase(object):
             except (MultipleObjectsReturned, IntegrityError):
                 print("Элемент дома не создан\n", data, "\n")
 
-    def get_properties_without_relationships(self):
+    def get_properties_without_relationships(self):  # noqa
         print('getting properties...')
         offset = 0
         limit = 1000
@@ -380,13 +373,10 @@ class ProfitBase(object):
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
-                                                                                                    'has_related_preset_with_layout'] is not None else False,
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False,
                     'facing': attributes['facing'] if attributes['facing'] is not None else 'Нет',
-                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
-                                                                                            'combined_bathroom_count'] is not None else 0,
-                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
-                                                                                              'separated_bathroom_count'] is not None else 0,
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0,
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0,
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
