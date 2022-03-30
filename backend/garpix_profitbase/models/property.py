@@ -37,8 +37,7 @@ class Property(PropertyMixin, models.Model):
     floor = models.ForeignKey('HouseFloor', verbose_name='Этаж на шахматке',
                               related_name='property', on_delete=models.CASCADE,
                               blank=True, null=True)
-    special_offer = models.ForeignKey('PropertySpecialOffer', on_delete=models.CASCADE,
-                                      blank=True, null=True, related_name='property')
+    special_offer = models.ManyToManyField('PropertySpecialOffer', blank=True, null=True, related_name='properties')
 
     def __str__(self):
         return str(self.profitbase_id)

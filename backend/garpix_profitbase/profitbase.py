@@ -294,6 +294,8 @@ class ProfitBase(object):
         print('getting special offers...')
         url = self.base_url + f'/special-offer?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
+        special_offers_in_db = PropertySpecialOffer.objects.all()
+
         for param in response.json():
             if not isinstance(param, dict):
                 break
@@ -302,24 +304,24 @@ class ProfitBase(object):
                 'description': param['description'],
                 'start_date': param['startDate']['date'],
                 'finish_date': param['finishDate']['date'],
-                'discount': param['discount']['value'] if param['discount']['value'] > 0 else 0.,
+                'discount': abs(param['discount']['value']),
             }
-            try:
-                offer = PropertySpecialOffer.objects.filter(profitbase_id=param['id']).first()
 
-                if offer is None:
-                    offer = PropertySpecialOffer.objects.create(
-                        profitbase_id=param['id'],
-                        **data
-                    )
+            try:
+                db_instance = list(
+                    filter(lambda instance: instance.profitbase_id == param['id'], special_offers_in_db))
+                if len(db_instance) > 0:
+                    db_instance = db_instance[0]
+                    for attr, value in data.items():
+                        setattr(db_instance, attr, value)
                 else:
-                    PropertySpecialOffer.objects.filter(profitbase_id=param['id']).update(**data)
+                    db_instance = PropertySpecialOffer(profitbase_id=param['id'], **data)
+                db_instance.save()
 
                 property_ids = param['propertyIds']
                 properties = Property.objects.filter(profitbase_id__in=property_ids)
-                for property in properties:
-                    property.special_offer = offer
-                    property.save()
+                db_instance.properties.set(properties, clear=True)
+
             except (MultipleObjectsReturned, IntegrityError):
                 print("Элемент спецпредложения не создан\n", data, "\n")
 
