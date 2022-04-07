@@ -305,6 +305,8 @@ class ProfitBase(object):
                 'start_date': param['startDate']['date'],
                 'finish_date': param['finishDate']['date'],
                 'discount': abs(param['discount']['value']),
+                'discount_type': param['discount']['type'],
+                'discount_unit': param['discount']['unit'],
             }
 
             try:
