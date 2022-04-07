@@ -298,8 +298,8 @@ class ProfitBase(object):
                 'start_date': param['startDate']['date'],
                 'finish_date': param['finishDate']['date'],
                 'discount': abs(param['discount']['value']),
-                'discount_type': param['discount']['type'],
-                'discount_unit': param['discount']['unit'],
+                'discount_type': param['discount'].get('type', None),
+                'discount_unit': param['discount'].get('unit', None),
             }
 
             try:
