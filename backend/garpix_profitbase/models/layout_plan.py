@@ -17,8 +17,6 @@ class LayoutPlan(LayoutPlanMixin, models.Model):
     self_house = models.ForeignKey('House', on_delete=models.SET_NULL, verbose_name='Дом', related_name='layout_plan',
                                    blank=True, null=True)
 
-
     class Meta:
         verbose_name = 'Планировка'
         verbose_name_plural = 'Планировки'
-

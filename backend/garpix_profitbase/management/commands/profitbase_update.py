@@ -13,12 +13,12 @@ class Command(BaseCommand):
         parser.add_argument('--init-special-offers',
                             action='store_true',
                             help='Опция для подгрузки спецпредложений')
-        
+
     def handle(self, *args, **kwargs):
         while True:
             print('start get profitbase data')
             start_time = time.time()
-            pb = ProfitBase(init_projects=kwargs['init_projects'], 
+            pb = ProfitBase(init_projects=kwargs['init_projects'],
                             init_special_offers=kwargs['init_special_offers'])
             pb.update_base()
             print('end get profitbase data')
