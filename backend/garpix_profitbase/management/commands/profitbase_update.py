@@ -25,4 +25,3 @@ class Command(BaseCommand):
             print('wait 20 minutes until the next iteration')
             print(f'it takes a {time.time() - start_time} sec')
             time.sleep(3600)
-
