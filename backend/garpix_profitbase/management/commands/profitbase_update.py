@@ -24,4 +24,4 @@ class Command(BaseCommand):
             print('end get profitbase data')
             print('wait 20 minutes until the next iteration')
             print(f'it takes a {time.time() - start_time} sec')
-            time.sleep(1200)
+            time.sleep(3600)
