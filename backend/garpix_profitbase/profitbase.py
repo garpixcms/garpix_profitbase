@@ -213,15 +213,12 @@ class ProfitBase(object):
                                 setattr(db_instance, attr, value)
                                 fields_to_update.append(attr)
                         if len(fields_to_update) > 0:
-                            print('==============')
-                            print(fields_to_update)
-                            print(db_instance)
-                            db_instance.save()
+                            db_instance.save(update_fields=fields_to_update)
 
                     else:
                         db_instance = Property.objects.create(profitbase_id=item['id'], **data)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(e)
 
     def get_layout_plans(self):
 
@@ -236,8 +233,6 @@ class ProfitBase(object):
 
         layout_data = response.json()['data']
 
-        layouts_create = []
-        layouts_update = []
         properties_update = []
 
         layouts_in_db = LayoutPlan.objects.all()
@@ -269,27 +264,30 @@ class ProfitBase(object):
 
             db_instance = list(
                 filter(lambda instance: instance.profitbase_id == layout['id'], layouts_in_db))
-            if len(db_instance) > 0:
-                db_instance = db_instance[0]
-                for attr, value in data.items():
-                    if getattr(db_instance, attr) != value:
-                        setattr(db_instance, attr, value)
-                        fields_to_update.append(attr)
+            try:
+                if len(db_instance) > 0:
+                    db_instance = db_instance[0]
+                    for attr, value in data.items():
+                        if getattr(db_instance, attr) != value:
+                            setattr(db_instance, attr, value)
+                            fields_to_update.append(attr)
 
-                if len(fields_to_update) > 0:
-                    db_instance.save()
+                    if len(fields_to_update) > 0:
+                        db_instance.save()
 
-            else:
-                db_instance = LayoutPlan.objects.create(profitbase_id=layout['id'], **data)
+                else:
+                    db_instance = LayoutPlan.objects.create(profitbase_id=layout['id'], **data)
 
-            properties = list(
-                filter(lambda property: str(property.profitbase_id) in layout['properties'], properties_in_db))
+                properties = list(
+                    filter(lambda property: str(property.profitbase_id) in layout['properties'], properties_in_db))
 
-            if len(properties) > 0:
-                for property in properties:
-                    if property.layout_plan != db_instance:
-                        property.layout_plan = db_instance
-                    properties_update.append(property)
+                if len(properties) > 0:
+                    for property in properties:
+                        if property.layout_plan != db_instance:
+                            property.layout_plan = db_instance
+                        properties_update.append(property)
+            except Exception as e:
+                print(e)
 
         Property.objects.bulk_update(properties_update, ['layout_plan'])
 
@@ -430,12 +428,17 @@ class ProfitBase(object):
 
 def get_areas(item):
     area = {
-        'area_total': item['area']['area_total'],
-        'area_estimated': item['area']['area_estimated'],
-        'area_living': item['area']['area_living'],
-        'area_kitchen': item['area']['area_kitchen'],
-        'area_balcony': item['area']['area_balcony'],
-        'area_without_balcony': item['area']['area_without_balcony'],
+        'area_total': item['area']['area_total'].replace(',', '.') if item['area']['area_total'] is not None else None,
+        'area_estimated': item['area']['area_estimated'].replace(',', '.') if item['area'][
+                                                                                  'area_estimated'] is not None else None,
+        'area_living': item['area']['area_living'].replace(',', '.') if item['area'][
+                                                                            'area_living'] is not None else None,
+        'area_kitchen': item['area']['area_kitchen'].replace(',', '.') if item['area'][
+                                                                              'area_kitchen'] is not None else None,
+        'area_balcony': item['area']['area_balcony'].replace(',', '.') if item['area'][
+                                                                              'area_balcony'] is not None else None,
+        'area_without_balcony': item['area']['area_without_balcony'].replace(',', '.') if item['area'][
+                                                                                              'area_without_balcony'] is not None else None,
     }
     for key, value in area.items():
         if value is None:
