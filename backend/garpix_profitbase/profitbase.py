@@ -115,15 +115,11 @@ class ProfitBase(object):
     def get_properties(self):  # noqa
         print('getting properties...')
         offset = 0
-        limit = 1000
+        limit = 100
         properties_in_db = Property.objects.all()
         houses_in_db = House.objects.all()
 
-        # properties_create = []
-        properties_update = []
-
         propertiy_fields = get_model_fields_list(Property)
-        fields_to_update = property_standart_fields()
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
@@ -133,8 +129,8 @@ class ProfitBase(object):
                 if len(response.json()['data']) == 0:
                     break
 
-            offset += 1000
-            limit += 1000
+            offset += 100
+            limit += 100
 
             for item in response.json()['data']:
 
@@ -168,10 +164,14 @@ class ProfitBase(object):
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False,
-                    'facing': attributes['facing'] if attributes['facing'] is not None and attributes['facing'] != '' else 'Нет',
-                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0,
-                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0,
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
+                                                                                                    'has_related_preset_with_layout'] is not None else False,
+                    'facing': attributes['facing'] if attributes['facing'] is not None and attributes[
+                        'facing'] != '' else 'Нет',
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
+                                                                                            'combined_bathroom_count'] is not None else 0,
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
+                                                                                              'separated_bathroom_count'] is not None else 0,
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
@@ -200,21 +200,28 @@ class ProfitBase(object):
                         field_name = propertiy_fields[field_key]
                         if field_value is not None:
                             data.update({field_name: field_value})
-                            if field_name not in fields_to_update:
-                                fields_to_update.append(field_name)
 
-                db_instance = list(
-                    filter(lambda instance: instance.profitbase_id == item['id'], properties_in_db))
-                if len(db_instance) > 0:
-                    db_instance = db_instance[0]
-                    for attr, value in data.items():
-                        setattr(db_instance, attr, value)
+                fields_to_update = []
 
-                    properties_update.append(db_instance)
-                else:
-                    db_instance = Property.objects.create(profitbase_id=item['id'], **data)
+                try:
+                    db_instance = list(
+                        filter(lambda instance: instance.profitbase_id == item['id'], properties_in_db))
+                    if len(db_instance) > 0:
+                        db_instance = db_instance[0]
+                        for attr, value in data.items():
+                            if getattr(db_instance, attr) != value:
+                                setattr(db_instance, attr, value)
+                                fields_to_update.append(attr)
+                        if len(fields_to_update) > 0:
+                            print('==============')
+                            print(fields_to_update)
+                            print(db_instance)
+                            db_instance.save()
 
-        Property.objects.bulk_update(properties_update, fields_to_update)
+                    else:
+                        db_instance = Property.objects.create(profitbase_id=item['id'], **data)
+                except Exception:
+                    pass
 
     def get_layout_plans(self):
 
@@ -258,17 +265,22 @@ class ProfitBase(object):
                 "self_house": house
             }
 
+            fields_to_update = []
+
             db_instance = list(
                 filter(lambda instance: instance.profitbase_id == layout['id'], layouts_in_db))
             if len(db_instance) > 0:
                 db_instance = db_instance[0]
                 for attr, value in data.items():
-                    setattr(db_instance, attr, value)
+                    if getattr(db_instance, attr) != value:
+                        setattr(db_instance, attr, value)
+                        fields_to_update.append(attr)
 
-                layouts_update.append(db_instance)
+                if len(fields_to_update) > 0:
+                    db_instance.save()
+
             else:
-                db_instance = LayoutPlan(profitbase_id=layout['id'], **data)
-                layouts_create.append(db_instance)
+                db_instance = LayoutPlan.objects.create(profitbase_id=layout['id'], **data)
 
             properties = list(
                 filter(lambda property: str(property.profitbase_id) in layout['properties'], properties_in_db))
@@ -279,8 +291,6 @@ class ProfitBase(object):
                         property.layout_plan = db_instance
                     properties_update.append(property)
 
-        LayoutPlan.objects.bulk_create(layouts_create)
-        LayoutPlan.objects.bulk_update(layouts_update, ['rooms', 'area_total', "price", "name", "self_house"])
         Property.objects.bulk_update(properties_update, ['layout_plan'])
 
     def get_special_offers(self):
@@ -375,10 +385,13 @@ class ProfitBase(object):
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False,
+                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
+                                                                                                    'has_related_preset_with_layout'] is not None else False,
                     'facing': attributes['facing'] if attributes['facing'] is not None else 'Нет',
-                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0,
-                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0,
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
+                                                                                            'combined_bathroom_count'] is not None else 0,
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
+                                                                                              'separated_bathroom_count'] is not None else 0,
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
