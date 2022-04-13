@@ -1,6 +1,12 @@
 import time
+
+from django.conf import settings
 from django.core.management.base import BaseCommand
 from ...profitbase import ProfitBase
+
+
+GARPIX_PROFITBASE_UPDATE_TIMEOUT = settings.GARPIX_PROFITBASE_UPDATE_TIMEOUT if hasattr(settings,
+                                                                                        'GARPIX_PROFITBASE_UPDATE_TIMEOUT') else 20
 
 
 class Command(BaseCommand):
@@ -22,6 +28,6 @@ class Command(BaseCommand):
                             init_special_offers=kwargs['init_special_offers'])
             pb.update_base()
             print('end get profitbase data')
-            print('wait 20 minutes until the next iteration')
+            print(f'wait {GARPIX_PROFITBASE_UPDATE_TIMEOUT} minutes until the next iteration')
             print(f'it takes a {time.time() - start_time} sec')
-            time.sleep(3600)
+            time.sleep(GARPIX_PROFITBASE_UPDATE_TIMEOUT * 60)
