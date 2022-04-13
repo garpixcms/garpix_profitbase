@@ -209,6 +209,8 @@ class ProfitBase(object):
                     if len(db_instance) > 0:
                         db_instance = db_instance[0]
                         for attr, value in data.items():
+                            if attr == 'area_district' and value is not None:  # ToDo: сделать адекватную логику для обработки ','
+                                value = float(value.replace(',', '.'))
                             if getattr(db_instance, attr) != value:
                                 setattr(db_instance, attr, value)
                                 fields_to_update.append(attr)
@@ -428,17 +430,12 @@ class ProfitBase(object):
 
 def get_areas(item):
     area = {
-        'area_total': item['area']['area_total'].replace(',', '.') if item['area']['area_total'] is not None else None,
-        'area_estimated': item['area']['area_estimated'].replace(',', '.') if item['area'][
-                                                                                  'area_estimated'] is not None else None,
-        'area_living': item['area']['area_living'].replace(',', '.') if item['area'][
-                                                                            'area_living'] is not None else None,
-        'area_kitchen': item['area']['area_kitchen'].replace(',', '.') if item['area'][
-                                                                              'area_kitchen'] is not None else None,
-        'area_balcony': item['area']['area_balcony'].replace(',', '.') if item['area'][
-                                                                              'area_balcony'] is not None else None,
-        'area_without_balcony': item['area']['area_without_balcony'].replace(',', '.') if item['area'][
-                                                                                              'area_without_balcony'] is not None else None,
+        'area_total': item['area']['area_total'],
+        'area_estimated': item['area']['area_estimated'],
+        'area_living': item['area']['area_living'],
+        'area_kitchen': item['area']['area_kitchen'],
+        'area_balcony': item['area']['area_balcony'],
+        'area_without_balcony': item['area']['area_without_balcony'],
     }
     for key, value in area.items():
         if value is None:
