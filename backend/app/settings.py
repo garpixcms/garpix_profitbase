@@ -16,3 +16,5 @@ GARPIX_PROFITBASE_LAYOUT_PLAN_MIXIN = 'garpix_profitbase.models.empty_mixin.Empt
 MIGRATION_MODULES.update({  # noqa
     'garpix_profitbase': 'app.migrations.garpix_profitbase',
 })
+
+GARPIX_PROFITBASE_UPDATE_TIMEOUT = 20
