@@ -3,10 +3,13 @@ import time
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from ...profitbase import ProfitBase
+from django.utils.module_loading import import_string
 
-
-GARPIX_PROFITBASE_UPDATE_TIMEOUT = settings.GARPIX_PROFITBASE_UPDATE_TIMEOUT if hasattr(settings,
-                                                                                        'GARPIX_PROFITBASE_UPDATE_TIMEOUT') else 20
+try:
+    Config = import_string(settings.GARPIX_CONFIG)
+    GARPIX_PROFITBASE_UPDATE_TIMEOUT = Config.get_solo().profitbase_update_interval
+except Exception:
+    GARPIX_PROFITBASE_UPDATE_TIMEOUT = getattr(settings, 'GARPIX_PROFITBASE_UPDATE_TIMEOUT', 120)
 
 
 class Command(BaseCommand):

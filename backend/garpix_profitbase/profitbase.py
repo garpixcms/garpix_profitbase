@@ -1,5 +1,6 @@
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError
+
 from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
 import os
 import requests
@@ -119,7 +120,7 @@ class ProfitBase(object):
         properties_in_db = Property.objects.all()
         houses_in_db = House.objects.all()
 
-        propertiy_fields = get_model_fields_list(Property)
+        property_fields = get_model_fields_list(Property)
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
@@ -164,14 +165,14 @@ class ProfitBase(object):
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
-                                                                                                    'has_related_preset_with_layout'] is not None else False,
+                    'has_related_preset_with_layout':
+                        item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False,
                     'facing': attributes['facing'] if attributes['facing'] is not None and attributes[
                         'facing'] != '' else 'Нет',
                     'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
-                                                                                            'combined_bathroom_count'] is not None else 0,
+                                                                                            'combined_bathroom_count'] is not None else 0,   # noqa
                     'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
-                                                                                              'separated_bathroom_count'] is not None else 0,
+                                                                                              'separated_bathroom_count'] is not None else 0,   # noqa
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
@@ -195,11 +196,7 @@ class ProfitBase(object):
                     'self_house': house,
                 }
 
-                for field_key, field_value in custom_fields.items():
-                    if field_key in propertiy_fields.keys():
-                        field_name = propertiy_fields[field_key]
-                        if field_value is not None:
-                            data.update({field_name: field_value})
+                data.update(set_model_custom_fields(property_fields, custom_fields))
 
                 fields_to_update = []
 
@@ -209,8 +206,6 @@ class ProfitBase(object):
                     if len(db_instance) > 0:
                         db_instance = db_instance[0]
                         for attr, value in data.items():
-                            if attr == 'area_district' and value is not None:  # ToDo: сделать адекватную логику для обработки ','
-                                value = float(value.replace(',', '.'))
                             if getattr(db_instance, attr) != value:
                                 setattr(db_instance, attr, value)
                                 fields_to_update.append(attr)
@@ -385,13 +380,13 @@ class ProfitBase(object):
                     'studio': item['studio'],
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
-                    'has_related_preset_with_layout': item['has_related_preset_with_layout'] if item[
-                                                                                                    'has_related_preset_with_layout'] is not None else False,
+                    'has_related_preset_with_layout':
+                        item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False, # noqa
                     'facing': attributes['facing'] if attributes['facing'] is not None else 'Нет',
-                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
-                                                                                            'combined_bathroom_count'] is not None else 0,
-                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
-                                                                                              'separated_bathroom_count'] is not None else 0,
+                    'combined_bathroom_count':
+                        attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0, # noqa
+                    'separated_bathroom_count':
+                        attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0, # noqa
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
@@ -448,13 +443,7 @@ def get_areas(item):
 def get_custom_fields(item):
     custom_fields = {}
     for field in item['custom_fields']:
-        if field['value'] == 'Нет' or field['value'] == 'нет':
-            value = False
-        elif field['value'] == 'Да' or field['value'] == 'да':
-            value = True
-        else:
-            value = field['value']
-        custom_fields.update({field['name']: value})
+        custom_fields.update({field['name']: field['value']})
     return custom_fields
 
 
@@ -462,8 +451,27 @@ def get_model_fields_list(Model):
     prop_fields = {}
     for f in Model._meta.get_fields():
         if hasattr(f, 'verbose_name'):
-            prop_fields.update({f.verbose_name: f.name})
+            prop_fields.update({f.verbose_name: {'name': f.name, 'field': f}})
     return prop_fields
+
+
+def set_model_custom_fields(model_fields, custom_fields):
+    from django.db.models import FloatField, BooleanField
+    data = {}
+    for custom_field_key, field_value in custom_fields.items():
+        if custom_field_key in model_fields.keys():
+            model_field_name = model_fields[custom_field_key]['name']
+            if field_value is not None:
+                if isinstance(model_fields[custom_field_key]['field'], FloatField):
+                    field_value = float(field_value.replace(',', '.'))
+                elif isinstance(model_fields[custom_field_key]['field'], BooleanField):
+                    if field_value == 'Нет' or field_value == 'нет':
+                        field_value = False
+                    elif field_value == 'Да' or field_value == 'да':
+                        field_value = True
+                data.update({model_field_name: field_value})
+
+    return data
 
 
 def property_standart_fields():
