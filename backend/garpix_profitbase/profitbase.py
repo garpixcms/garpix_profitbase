@@ -305,6 +305,7 @@ class ProfitBase(object):
                 'discount': abs(param['discount']['value']),
                 'discount_type': param['discount'].get('type', None),
                 'discount_unit': param['discount'].get('unit', None),
+                'is_active': param['discount'].get('active', False),
             }
 
             try:
