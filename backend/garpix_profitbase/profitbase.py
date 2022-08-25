@@ -217,7 +217,7 @@ class ProfitBase(object):
                 except Exception as e:
                     print(e)
 
-    def get_layout_plans(self):
+    def get_layout_plans(self):  # noqa
 
         print('getting layout plans...')
 
