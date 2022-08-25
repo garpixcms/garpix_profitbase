@@ -8,7 +8,7 @@ with open(path.join(settings.BASE_DIR, '..', 'README.md'), encoding='utf-8') as 
 
 setup(
     name='garpix_profitbase',
-    version='1.9.0',
+    version='1.9.1',
     description='',
     long_description=long_description,
     url='https://github.com/garpixcms/garpix_profitbase',
