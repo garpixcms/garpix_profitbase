@@ -101,6 +101,7 @@ class ProfitBase(object):
             data = {
                 'name': item['title'],
                 'title': item['title'],
+                'material': item.get('material')
             }
             try:
                 if house is None:
