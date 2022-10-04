@@ -1,7 +1,7 @@
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError
 
-from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
+from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan, Config
 import os
 import requests
 import json
@@ -29,13 +29,13 @@ class ProfitBase(object):
 
     def update_base(self):
         self.authenticate()
-        if self.init_projects:
-            self.get_projects()
+        # if self.init_projects:
+        #     self.get_projects()
         self.get_houses()
-        self.get_layout_plans()
-        self.get_properties()
-        if self.init_special_offers:
-            self.get_special_offers()
+        # self.get_layout_plans()
+        # self.get_properties()
+        # if self.init_special_offers:
+        #     self.get_special_offers()
 
     def create_booking(self, name, phone, email, property_id, comment):
         self.authenticate()
@@ -66,11 +66,14 @@ class ProfitBase(object):
             self.token = response.json()['access_token']
 
     def delete_non_existent_object(self, DbModel, pb_ids):
-
-        db_elements = DbModel.objects.all()
-        for elem in db_elements:
-            if elem.profitbase_id not in pb_ids:
-                elem.delete()
+        try:
+            if Config.get_solo().profitbase_delete_data:
+                db_elements = DbModel.objects.all()
+                for elem in db_elements:
+                    if elem.profitbase_id not in pb_ids:
+                        elem.delete()
+        except Exception as e:
+            print(e)
 
     def get_projects(self):
         print('getting projects...')

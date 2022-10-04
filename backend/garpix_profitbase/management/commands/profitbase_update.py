@@ -1,15 +1,14 @@
 import time
 
-from django.conf import settings
 from django.core.management.base import BaseCommand
-from ...profitbase import ProfitBase
-from django.utils.module_loading import import_string
+
+from garpix_profitbase.models import Config
+from garpix_profitbase.profitbase import ProfitBase
 
 try:
-    Config = import_string(settings.GARPIX_CONFIG)
     GARPIX_PROFITBASE_UPDATE_TIMEOUT = Config.get_solo().profitbase_update_interval
 except Exception:
-    GARPIX_PROFITBASE_UPDATE_TIMEOUT = getattr(settings, 'GARPIX_PROFITBASE_UPDATE_TIMEOUT', 120)
+    GARPIX_PROFITBASE_UPDATE_TIMEOUT = 120
 
 
 class Command(BaseCommand):
