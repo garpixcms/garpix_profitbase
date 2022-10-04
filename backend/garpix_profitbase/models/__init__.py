@@ -7,3 +7,4 @@ from .layout_plan import LayoutPlan
 from .project import Project
 from .property import Property
 from .property_special_offer import PropertySpecialOffer
+from .config import Config

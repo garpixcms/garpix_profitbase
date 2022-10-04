@@ -1,7 +1,7 @@
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import IntegrityError
 
-from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan
+from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan, Config
 import os
 import requests
 import json
@@ -65,6 +65,16 @@ class ProfitBase(object):
                 raise PermissionError(response.text)
             self.token = response.json()['access_token']
 
+    def delete_non_existent_object(self, DbModel, pb_ids):
+        try:
+            if Config.get_solo().profitbase_delete_data:
+                db_elements = DbModel.objects.all()
+                for elem in db_elements:
+                    if elem.profitbase_id not in pb_ids:
+                        elem.delete()
+        except Exception as e:
+            print(e)
+
     def get_projects(self):
         print('getting projects...')
         url = self.base_url + f'/projects?access_token={self.token}'
@@ -97,6 +107,7 @@ class ProfitBase(object):
         for item in response.json()['data']:
             if not isinstance(item, dict):
                 break
+            self.delete_non_existent_object(House, [item['id'] for item in response.json()['data']])
             house = House.objects.filter(profitbase_id=item['id']).first()
             data = {
                 'name': item['title'],
@@ -122,6 +133,7 @@ class ProfitBase(object):
         houses_in_db = House.objects.all()
 
         property_fields = get_model_fields_list(Property)
+        pb_ids = []
         while True:
             url = f'{self.base_url}/property?access_token={self.token}&offset={offset}&limit={limit}&full=true'
             response = requests.get(url, headers=self.default_header)
@@ -133,7 +145,7 @@ class ProfitBase(object):
 
             offset += 100
             limit += 100
-
+            pb_ids.extend([item['id'] for item in response.json()['data']])
             for item in response.json()['data']:
 
                 if not isinstance(item, dict):
@@ -167,13 +179,14 @@ class ProfitBase(object):
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
                     'has_related_preset_with_layout':
-                        item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False,
+                        item['has_related_preset_with_layout'] if item[
+                                                                      'has_related_preset_with_layout'] is not None else False,
                     'facing': attributes['facing'] if attributes['facing'] is not None and attributes[
                         'facing'] != '' else 'Нет',
                     'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
-                                                                                            'combined_bathroom_count'] is not None else 0,   # noqa
+                                                                                            'combined_bathroom_count'] is not None else 0,  # noqa
                     'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
-                                                                                              'separated_bathroom_count'] is not None else 0,   # noqa
+                                                                                              'separated_bathroom_count'] is not None else 0,  # noqa
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
@@ -217,6 +230,7 @@ class ProfitBase(object):
                         db_instance = Property.objects.create(profitbase_id=item['id'], **data)
                 except Exception as e:
                     print(e)
+        self.delete_non_existent_object(Property, pb_ids)
 
     def get_layout_plans(self):  # noqa
 
@@ -230,7 +244,7 @@ class ProfitBase(object):
             return
 
         layout_data = response.json()['data']
-
+        self.delete_non_existent_object(LayoutPlan, [item['id'] for item in response.json()['data']])
         properties_update = []
 
         layouts_in_db = LayoutPlan.objects.all()
@@ -294,6 +308,8 @@ class ProfitBase(object):
         url = self.base_url + f'/special-offer?access_token={self.token}'
         response = requests.get(url, headers=self.default_header)
         special_offers_in_db = PropertySpecialOffer.objects.all()
+
+        self.delete_non_existent_object(PropertySpecialOffer, [item['id'] for item in response.json()])
 
         for param in response.json():
             if not isinstance(param, dict):
@@ -383,12 +399,18 @@ class ProfitBase(object):
                     'free_layout': item['free_layout'],
                     'euro_layout': item['euro_layout'],
                     'has_related_preset_with_layout':
-                        item['has_related_preset_with_layout'] if item['has_related_preset_with_layout'] is not None else False, # noqa
+                        item['has_related_preset_with_layout'] if item[
+                                                                      'has_related_preset_with_layout'] is not None else False,
+                    # noqa
                     'facing': attributes['facing'] if attributes['facing'] is not None else 'Нет',
                     'combined_bathroom_count':
-                        attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0, # noqa
+                        attributes['combined_bathroom_count'] if attributes[
+                                                                     'combined_bathroom_count'] is not None else 0,
+                    # noqa
                     'separated_bathroom_count':
-                        attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0, # noqa
+                        attributes['separated_bathroom_count'] if attributes[
+                                                                      'separated_bathroom_count'] is not None else 0,
+                    # noqa
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
