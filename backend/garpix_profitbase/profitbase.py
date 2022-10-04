@@ -180,12 +180,8 @@ class ProfitBase(object):
                                                                       'has_related_preset_with_layout'] is not None else False,
                     'facing': attributes['facing'] if attributes['facing'] is not None and attributes[
                         'facing'] != '' else 'Нет',
-                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes[
-                                                                                            'combined_bathroom_count'] is not None else 0,
-                    # noqa
-                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes[
-                                                                                              'separated_bathroom_count'] is not None else 0,
-                    # noqa
+                    'combined_bathroom_count': attributes['combined_bathroom_count'] if attributes['combined_bathroom_count'] is not None else 0, # noqa
+                    'separated_bathroom_count': attributes['separated_bathroom_count'] if attributes['separated_bathroom_count'] is not None else 0, # noqa
                     'code': attributes['code'],
                     'description': attributes['description'],
                     'bti_number': attributes['bti_number'],
