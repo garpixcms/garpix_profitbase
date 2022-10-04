@@ -29,13 +29,13 @@ class ProfitBase(object):
 
     def update_base(self):
         self.authenticate()
-        # if self.init_projects:
-        #     self.get_projects()
+        if self.init_projects:
+            self.get_projects()
         self.get_houses()
-        # self.get_layout_plans()
-        # self.get_properties()
-        # if self.init_special_offers:
-        #     self.get_special_offers()
+        self.get_layout_plans()
+        self.get_properties()
+        if self.init_special_offers:
+            self.get_special_offers()
 
     def create_booking(self, name, phone, email, property_id, comment):
         self.authenticate()
