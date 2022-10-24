@@ -43,6 +43,13 @@ GARPIX_PROFITBASE_SPECIAL_OFFER_MIXIN = 'garpix_profitbase.models.empty_mixin.Em
 GARPIX_PROFITBASE_LAYOUT_PLAN_MIXIN = 'garpix_profitbase.models.empty_mixin.EmptyMixin'
 ```
 
+Если вам необходимо, чтобы помещения отправлялись на дальнейшую обработку при удалении/добавлении/изменении акции, 
+можно указать путь к функции.
+```bash
+# example:
+GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE = 'app.service.recalculate_new_price'
+```
+RECALCULATE_NEW_PRICE
 Нужно обратиться к администраторам profitbase.ru чтоб они добавили ваш ip в белый список.
 
 ## Использование
