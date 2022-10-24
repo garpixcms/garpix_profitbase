@@ -1,13 +1,19 @@
-from django.core.exceptions import MultipleObjectsReturned
+import os
+import json
+import requests
+
+from datetime import datetime
+
+from django.conf import settings
 from django.db import IntegrityError
+from django.utils.timezone import make_aware
+from django.utils.module_loading import import_string
+from django.core.exceptions import MultipleObjectsReturned
 
 from .models import Project, House, Property, HouseSection, PropertySpecialOffer, City, HouseFloor, LayoutPlan, Config
-import os
-import requests
-import json
 
 
-class ProfitBase(object):
+class ProfitBase:
     def __init__(self, init_projects=False, init_special_offers=False, pb_company_id=os.getenv('PROFITBASE_COMPANY_ID'),
                  api_key=os.getenv('PROFITBASE_API_KEY'),
                  client_name=os.getenv('PROFITBASE_CLIENT_NAME')):
@@ -311,14 +317,18 @@ class ProfitBase(object):
 
         self.delete_non_existent_object(PropertySpecialOffer, [item['id'] for item in response.json()])
 
+        def data_datetime(str_time: str):
+            new_time: datetime = datetime.strptime(str_time, '%Y-%m-%d %H:%M:%S.%f')
+            return make_aware(new_time)
+
         for param in response.json():
             if not isinstance(param, dict):
                 break
             data = {
                 'title': param['name'],
                 'description': param['description'],
-                'start_date': param['startDate']['date'],
-                'finish_date': param['finishDate']['date'],
+                'start_date': data_datetime(param['startDate']['date']),
+                'finish_date': data_datetime(param['finishDate']['date']),
                 'discount': param['discount']['value'],
                 'discount_type': param['discount'].get('type', None),
                 'discount_unit': param['discount'].get('unit', None),
@@ -339,6 +349,26 @@ class ProfitBase(object):
                 property_ids = param['propertyIds']
                 properties = Property.objects.filter(profitbase_id__in=property_ids)
                 db_instance.properties.set(properties, clear=True)
+                db_instance.save()
+
+                if (hasattr(settings, 'GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE')
+                        and settings.GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE is not None):
+                    recalculate_new_price = import_string(settings.GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE)
+                    if recalculate_new_price:
+                        # Отправялем на перерасчет ценники квартир, участвующие в акции
+                        recalculate_new_price(properties)
+
+                        # Дополнительная проверка, остались ли в БД квартиры с акцией
+                        need_recalculate_remove = (
+                            Property.objects.filter(special_offer=db_instance).exclude(id__in=properties)
+                        )
+
+                        if need_recalculate_remove.exists():
+                            for element_remove in need_recalculate_remove:
+                                element_remove.special_offer.remove(db_instance)
+                                element_remove.save()
+
+                            recalculate_new_price(need_recalculate_remove)
 
             except (MultipleObjectsReturned, IntegrityError):
                 print("Элемент спецпредложения не создан\n", data, "\n")
