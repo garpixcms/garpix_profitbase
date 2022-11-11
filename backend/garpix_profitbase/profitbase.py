@@ -76,7 +76,7 @@ class ProfitBase:
             if Config.get_solo().profitbase_delete_data:
                 db_elements = DbModel.objects.all()
                 for elem in db_elements:
-                    if elem.profitbase_id not in pb_ids:
+                    if elem.profitbase_id and elem.profitbase_id not in pb_ids:
                         elem.delete()
         except Exception as e:
             print(e)
