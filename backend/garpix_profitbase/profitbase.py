@@ -73,11 +73,11 @@ class ProfitBase:
 
     def delete_non_existent_object(self, DbModel, pb_ids):
         try:
+            db_elements = DbModel.objects.filter(profitbase_id__isnull=False).exclude(profitbase_id__in=pb_ids)
             if Config.get_solo().profitbase_delete_data:
-                db_elements = DbModel.objects.all()
-                for elem in db_elements:
-                    if elem.profitbase_id and elem.profitbase_id not in pb_ids:
-                        elem.delete()
+                db_elements.delete()
+            else:
+                db_elements.update(is_active=False)
         except Exception as e:
             print(e)
 
@@ -95,6 +95,7 @@ class ProfitBase:
                     'title': item['title'],
                     'name': item['title'],
                     'city': city,
+                    'is_active': True
                 }
                 if project is None:
                     Project.objects.create(
@@ -118,7 +119,8 @@ class ProfitBase:
             data = {
                 'name': item['title'],
                 'title': item['title'],
-                'material': item.get('material')
+                'material': item.get('material'),
+                'is_active': True
             }
             try:
                 if house is None:
@@ -179,6 +181,7 @@ class ProfitBase:
                 attributes = item['attributes']
                 custom_fields = get_custom_fields(item)
                 data = {
+                    'is_active': True,
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],
@@ -271,6 +274,7 @@ class ProfitBase:
                 house = None
 
             data = {
+                "is_active": True,
                 "rooms": layout['roomsAmount'],
                 "area_total": layout['areaRange']['min'],
                 "price": layout['priceRange']['min'],
@@ -383,6 +387,7 @@ class ProfitBase:
                     break
                 house = House.objects.filter(profitbase_id=item['id']).first()
                 data = {
+                    'is_active': True,
                     'name': item['title'],
                     'title': item['title'],
                 }
@@ -423,6 +428,7 @@ class ProfitBase:
                 attributes = item['planImages']
                 custom_fields = get_custom_fields(item)
                 data = {
+                    'is_active': True,
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],
