@@ -78,6 +78,10 @@ class ProfitBase:
                 db_elements.delete()
             else:
                 db_elements.update(is_active=False)
+
+                if DbModel == PropertySpecialOffer:
+                    for db_element in db_elements:
+                        self.recalculate_properties_prices(db_element)
         except Exception as e:
             print(e)
 
@@ -313,6 +317,30 @@ class ProfitBase:
 
         Property.objects.bulk_update(properties_update, ['layout_plan'])
 
+    @staticmethod
+    def recalculate_properties_prices(db_instance, properties: list = None):
+        if (hasattr(settings, 'GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE')
+                and settings.GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE is not None):
+            recalculate_new_price = import_string(settings.GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE)
+            if recalculate_new_price:
+
+                properties = properties or Property.objects.filter(special_offer=db_instance)
+
+                # Отправялем на перерасчет ценники квартир, участвующие в акции
+                recalculate_new_price(properties)
+
+                # Дополнительная проверка, остались ли в БД квартиры с акцией
+                need_recalculate_remove = (
+                    Property.objects.filter(special_offer=db_instance).exclude(id__in=properties)
+                )
+
+                if need_recalculate_remove.exists():
+                    for element_remove in need_recalculate_remove:
+                        element_remove.special_offer.remove(db_instance)
+                        element_remove.save()
+
+                    recalculate_new_price(need_recalculate_remove)
+
     def get_special_offers(self):
         print('getting special offers...')
         url = self.base_url + f'/special-offer?access_token={self.token}'
@@ -355,24 +383,7 @@ class ProfitBase:
                 db_instance.properties.set(properties, clear=True)
                 db_instance.save()
 
-                if (hasattr(settings, 'GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE')
-                        and settings.GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE is not None):
-                    recalculate_new_price = import_string(settings.GARPIX_PROFITBASE_RECALCULATE_NEW_PRICE)
-                    if recalculate_new_price:
-                        # Отправялем на перерасчет ценники квартир, участвующие в акции
-                        recalculate_new_price(properties)
-
-                        # Дополнительная проверка, остались ли в БД квартиры с акцией
-                        need_recalculate_remove = (
-                            Property.objects.filter(special_offer=db_instance).exclude(id__in=properties)
-                        )
-
-                        if need_recalculate_remove.exists():
-                            for element_remove in need_recalculate_remove:
-                                element_remove.special_offer.remove(db_instance)
-                                element_remove.save()
-
-                            recalculate_new_price(need_recalculate_remove)
+                self.recalculate_properties_prices(db_instance, properties)
 
             except (MultipleObjectsReturned, IntegrityError):
                 print("Элемент спецпредложения не создан\n", data, "\n")
