@@ -5,4 +5,4 @@ from ..models.config import Config
 
 @admin.register(Config)
 class ConfigAdmin(SingletonModelAdmin):
-    pass
+    exclude = ('profitbase_delete_special_offers',)
