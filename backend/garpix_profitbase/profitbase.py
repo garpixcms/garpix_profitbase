@@ -74,14 +74,22 @@ class ProfitBase:
     def delete_non_existent_object(self, DbModel, pb_ids):
         try:
             db_elements = DbModel.objects.filter(profitbase_id__isnull=False).exclude(profitbase_id__in=pb_ids)
-            if Config.get_solo().profitbase_delete_data:
-                db_elements.delete()
-            else:
-                db_elements.update(is_active=False)
 
-                if DbModel == PropertySpecialOffer:
+            config = Config.get_solo()
+
+            if DbModel == PropertySpecialOffer:
+                if config.profitbase_delete_special_offers:
+                    db_elements.delete()
+                else:
+                    db_elements.update(is_active=False)
                     for db_element in db_elements:
                         self.recalculate_properties_prices(db_element)
+            else:
+                if config.profitbase_delete_objects:
+                    db_elements.delete()
+                else:
+                    db_elements.update(is_active=False)
+
         except Exception as e:
             print(e)
 
