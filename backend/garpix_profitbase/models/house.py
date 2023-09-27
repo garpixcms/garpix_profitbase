@@ -9,6 +9,7 @@ HouseMixin = import_string(settings.GARPIX_PROFITBASE_HOUSE_MIXIN)
 class House(HouseMixin, models.Model):
     name = models.CharField(max_length=100, verbose_name='Название')
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID', blank=True, null=True)
+    profitbase_is_active = models.BooleanField(verbose_name='Активность в ProfitBase', default=True)
     self_project = models.ForeignKey(Project, on_delete=models.CASCADE,
                                      verbose_name='Проект', related_name='house',
                                      blank=True, null=True)

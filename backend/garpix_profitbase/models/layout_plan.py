@@ -7,8 +7,8 @@ LayoutPlanMixin = import_string(settings.GARPIX_PROFITBASE_LAYOUT_PLAN_MIXIN)
 
 class LayoutPlan(LayoutPlanMixin, models.Model):
     profitbase_id = models.IntegerField(blank=True, null=True, verbose_name='ProfitBase ID')
+    profitbase_is_active = models.BooleanField(verbose_name='Активность в ProfitBase', default=True)
     name = models.CharField(max_length=256, verbose_name='Название планировки', blank=True, default='LayoutPlanName')
-    is_active = models.BooleanField(default=True, verbose_name='Планировка активна?')
     rooms = models.IntegerField(verbose_name='Количество комнат', blank=True, default=1)
     area_total = models.FloatField(verbose_name='Суммарная площадь', blank=True, null=True)
     price = models.DecimalField(max_digits=12, decimal_places=4,

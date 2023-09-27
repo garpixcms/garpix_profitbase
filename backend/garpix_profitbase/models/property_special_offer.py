@@ -21,9 +21,9 @@ class PropertySpecialOffer(SpecialOfferMixin, models.Model):
             (PERCENT, '%'),
             (VALUE, 'руб.')
         )
-    is_active = models.BooleanField(default=False, verbose_name='Акция активна?')
     title = models.CharField(max_length=256, verbose_name='Название акции', blank=True, default='')
     profitbase_id = models.IntegerField(verbose_name='ID акции', blank=True, null=True)
+    profitbase_is_active = models.BooleanField(verbose_name='Активность в ProfitBase', default=True)
     description = models.TextField(verbose_name='Описание акции', blank=True, null=True)
     start_date = models.DateTimeField(blank=True, null=True, verbose_name='Дата начала ивента')
     finish_date = models.DateTimeField(blank=True, null=True, verbose_name='Дата окончания ивента')

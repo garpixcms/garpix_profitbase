@@ -77,18 +77,25 @@ class ProfitBase:
 
             config = Config.get_solo()
 
+            config_db_model = {
+                LayoutPlan: 'layout_plans',
+                Project: 'projects',
+                House: 'houses',
+                Property: 'properties'
+            }
+
             if DbModel == PropertySpecialOffer:
                 if config.profitbase_delete_special_offers:
                     db_elements.delete()
                 else:
-                    db_elements.update(is_active=False)
+                    db_elements.update(profitbase_is_active=False)
                     for db_element in db_elements:
                         self.recalculate_properties_prices(db_element)
             else:
-                if config.profitbase_delete_objects:
+                if getattr(config, f'profitbase_delete_{config_db_model[DbModel]}'):
                     db_elements.delete()
                 else:
-                    db_elements.update(is_active=False)
+                    db_elements.update(profitbase_is_active=False)
 
         except Exception as e:
             print(e)
@@ -107,7 +114,7 @@ class ProfitBase:
                     'title': item['title'],
                     'name': item['title'],
                     'city': city,
-                    'is_active': True
+                    'profitbase_is_active': True
                 }
                 if project is None:
                     Project.objects.create(
@@ -132,7 +139,7 @@ class ProfitBase:
                 'name': item['title'],
                 'title': item['title'],
                 'material': item.get('material'),
-                'is_active': True
+                'profitbase_is_active': True
             }
             try:
                 if house is None:
@@ -193,7 +200,7 @@ class ProfitBase:
                 attributes = item['attributes']
                 custom_fields = get_custom_fields(item)
                 data = {
-                    'is_active': True,
+                    'profitbase_is_active': True,
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],
@@ -286,7 +293,7 @@ class ProfitBase:
                 house = None
 
             data = {
-                "is_active": True,
+                "profitbase_is_active": True,
                 "rooms": layout['roomsAmount'],
                 "area_total": layout['areaRange']['min'],
                 "price": layout['priceRange']['min'],
@@ -372,7 +379,7 @@ class ProfitBase:
                 'discount': param['discount']['value'],
                 'discount_type': param['discount'].get('type', None),
                 'discount_unit': param['discount'].get('unit', None),
-                'is_active': param['discount'].get('active', False),
+                'profitbase_is_active': param['discount'].get('active', False),
             }
 
             try:
@@ -406,7 +413,7 @@ class ProfitBase:
                     break
                 house = House.objects.filter(profitbase_id=item['id']).first()
                 data = {
-                    'is_active': True,
+                    'profitbase_is_active': True,
                     'name': item['title'],
                     'title': item['title'],
                 }
@@ -447,7 +454,7 @@ class ProfitBase:
                 attributes = item['planImages']
                 custom_fields = get_custom_fields(item)
                 data = {
-                    'is_active': True,
+                    'profitbase_is_active': True,
                     'number': item['number'],
                     'rooms': item['rooms_amount'],
                     'studio': item['studio'],

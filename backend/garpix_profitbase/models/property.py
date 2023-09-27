@@ -7,6 +7,7 @@ PropertyMixin = import_string(settings.GARPIX_PROFITBASE_PROPERTY_MIXIN)
 
 class Property(PropertyMixin, models.Model):
     profitbase_id = models.IntegerField(verbose_name='ProfitBase ID')
+    profitbase_is_active = models.BooleanField(verbose_name='Активность в ProfitBase', default=True)
     layout_plan = models.ForeignKey('LayoutPlan', on_delete=models.SET_NULL, verbose_name='Планировка',
                                     related_name='property', blank=True, null=True)
     self_house = models.ForeignKey('House', on_delete=models.CASCADE, verbose_name='Дом', related_name='property',
